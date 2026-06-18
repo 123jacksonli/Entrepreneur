@@ -33,10 +33,11 @@ class Orchestrator:
 
     async def start_run(self, run_id: str, idea: str) -> None:
         """Start and drive a pipeline run."""
-        self.state.create_run(run_id, idea, "running", "research")
+        self.state.create_run(run_id, idea, "running", "idea-generation")
         await self._emit(PipelineEvent(type="run-started", run_id=run_id))
 
-        # Placeholder: execute research agent.
+        # Placeholder: execute idea generation agent, then research agent.
+        await self._run_agent(run_id, "idea-generation", idea)
         await self._run_agent(run_id, "research", idea)
 
         # TODO: implement remaining agents and checkpoint.

@@ -2,6 +2,14 @@ import { Agent, PipelineEdge } from "@/types";
 
 export const AGENTS: Agent[] = [
   {
+    id: "idea-generation",
+    name: "Idea Generation Agent",
+    description: "Turns raw input into a structured startup idea brief.",
+    status: "idle",
+    outputs: [],
+    logs: [],
+  },
+  {
     id: "research",
     name: "Research Agent",
     description: "Gathers market data and trends online.",
@@ -68,6 +76,7 @@ export const AGENTS: Agent[] = [
 ];
 
 export const EDGES: PipelineEdge[] = [
+  { id: "e0", source: "idea-generation", target: "research" },
   { id: "e1", source: "research", target: "plan" },
   { id: "e2", source: "plan", target: "execution-plan" },
   { id: "e3", source: "execution-plan", target: "architecture" },

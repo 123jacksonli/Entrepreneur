@@ -24,6 +24,7 @@ else:
     BASE_URL = os.getenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
 
 AGENT_OVERRIDES: dict[str, dict[str, Any]] = {
+    "idea-generation": {"model": DEFAULT_MODEL, "temperature": 0.4},
     "research": {"model": DEFAULT_MODEL, "temperature": 0.3},
     "plan": {"model": DEFAULT_MODEL, "temperature": 0.3},
     "execution-plan": {"model": DEFAULT_MODEL, "temperature": 0.2},

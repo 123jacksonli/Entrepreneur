@@ -2,13 +2,17 @@
 
 ## 1. Project Vision
 
-This repository builds an **agent-driven startup builder** for entrepreneurs. A user describes a business idea, and a pipeline of specialized agents researches, plans, designs, builds, tests, and challenges the solution — with a mandatory human checkpoint before any code is written.
+This repository builds an **agent-driven startup builder** for entrepreneurs. A user describes a business idea (or even just an interest area), and a pipeline of specialized agents refines, researches, plans, designs, builds, tests, and validates startup ideas — with a mandatory human checkpoint before any code is written.
 
 > **Current phase:** agent specification. No code is written yet.
 
 ## 2. Agent Pipeline
 
 ```
+┌─────────────────┐
+│ Idea Generation │  ──► Turn raw input into a structured idea brief
+└────────┬────────┘
+         ▼
 ┌─────────────┐
 │   Research  │  ──► Gather market data, trends, and sources
 └──────┬──────┘
@@ -47,16 +51,17 @@ This repository builds an **agent-driven startup builder** for entrepreneurs. A 
 
 ```
 Entrepreneur/
-├── AGENTS.md                           # this file
+├── AGENTS.md                              # this file
 ├── agents/
-│   ├── research/AGENT.md               # Research Agent spec
-│   ├── plan/AGENT.md                   # Plan Agent spec
-│   ├── execution-plan/AGENT.md         # Execution Plan Agent spec
-│   ├── architecture/AGENT.md           # Architecture Agent spec
-│   ├── execution/AGENT.md              # Execution Agent spec
-│   ├── test/AGENT.md                   # Test Agent spec
-│   ├── qa/AGENT.md                     # QA Agent spec
-│   └── human-in-loop/AGENT.md          # Human-in-the-loop checkpoint spec
+│   ├── idea-generation/AGENT.md           # Idea Generation Agent spec
+│   ├── research/AGENT.md                  # Research Agent spec
+│   ├── plan/AGENT.md                      # Plan Agent spec
+│   ├── execution-plan/AGENT.md            # Execution Plan Agent spec
+│   ├── architecture/AGENT.md              # Architecture Agent spec
+│   ├── execution/AGENT.md                 # Execution Agent spec
+│   ├── test/AGENT.md                      # Test Agent spec
+│   ├── qa/AGENT.md                        # QA Agent spec
+│   └── human-in-loop/AGENT.md             # Human-in-the-loop checkpoint spec
 └── .git/
 ```
 
@@ -64,7 +69,7 @@ Entrepreneur/
 
 1. **One agent per step.** Each agent owns exactly one stage of the pipeline.
 2. **No code before the checkpoint.** The Execution Agent is the only agent allowed to write implementation code, and it may only run after human approval.
-3. **Artifacts only.** Research, Plan, Execution Plan, and Architecture agents produce markdown artifacts, not runnable code.
+3. **Artifacts only.** Idea Generation, Research, Plan, Execution Plan, and Architecture agents produce markdown artifacts, not runnable code.
 4. **Hand-off contract.** Each agent must write its output to a clearly named artifact and signal completion to the orchestrator.
 5. **Human gate is blocking.** The pipeline pauses at the Human-in-the-Loop checkpoint until the user explicitly approves, rejects, or requests changes.
 6. **Iteration is normal.** QA can reject output and send it back to the Execution Agent. Earlier stages can also be revisited if the human requests it.
@@ -74,6 +79,7 @@ Entrepreneur/
 
 | Stage | Output File |
 |-------|-------------|
+| Idea Generation | `outputs/00-idea-brief.md` |
 | Research | `outputs/01-research-report.md` |
 | Plan | `outputs/02-plan-report.md` |
 | Execution Plan | `outputs/03-execution-plan.md` |
@@ -83,7 +89,7 @@ Entrepreneur/
 | Test | `outputs/07-test-report.md` |
 | QA | `outputs/08-qa-report.md` |
 
-## 7. LLM Provider
+## 6. LLM Provider
 
 All agents use **Zhipu AI (智谱AI)** models by default, routed through **OpenRouter** using the shared `src/llm_factory.py`.
 
@@ -94,11 +100,11 @@ All agents use **Zhipu AI (智谱AI)** models by default, routed through **OpenR
 
 To switch to direct Zhipu AI, set `ZHIPU_API_KEY` and `ZHIPU_BASE_URL` instead. The factory will auto-detect the direct configuration.
 
-## 8. Frontend Dashboard
+## 7. Frontend Dashboard
 
 A Next.js frontend in `frontend/` visualizes the agent pipeline:
 
-- **Live Pipeline tab** — interactive graph of all 8 agents, their statuses, and workflow connections.
+- **Live Pipeline tab** — interactive graph of all 9 agents, their statuses, and workflow connections.
 - **Agent detail panel** — click any agent to see its outputs and logs.
 - **History tab** — chronological list of past pipeline runs.
 
@@ -111,7 +117,7 @@ npm run dev
 
 The frontend uses mock orchestration until the backend API is available.
 
-## 9. When This File Must Be Updated
+## 8. When This File Must Be Updated
 
 Update this file whenever you:
 - Add, remove, or rename an agent stage.

@@ -2,11 +2,11 @@
 
 ## 1. Overview
 
-This document describes the architecture for the **Entrepreneur Agent Startup** system: a multi-agent pipeline that helps entrepreneurs research, plan, design, build, test, and validate startup ideas, with a web dashboard for visualization and a mandatory human-in-the-loop checkpoint.
+This document describes the architecture for the **Entrepreneur Agent Startup** system: a multi-agent pipeline that helps entrepreneurs generate, refine, research, plan, design, build, test, and validate startup ideas, with a web dashboard for visualization and a mandatory human-in-the-loop checkpoint.
 
 The system has two main parts:
 
-1. **Agent Backend** — Python orchestrator that runs the 8-agent pipeline.
+1. **Agent Backend** — Python orchestrator that runs the 9-agent pipeline.
 2. **Web Frontend** — Next.js dashboard that visualizes the pipeline and run history.
 
 ## 2. Tech Stack
@@ -86,6 +86,7 @@ Entrepreneur/
 │   └── agents/                 # Agent implementations
 │       ├── __init__.py
 │       ├── base.py             # Base agent class
+│       ├── idea_generation.py
 │       ├── research.py
 │       ├── plan.py
 │       ├── execution_plan.py
@@ -124,14 +125,15 @@ A state machine that drives the pipeline:
 ```python
 class Orchestrator:
     async def start_run(self, idea: str) -> Run:
-        # 1. Research
-        # 2. Plan
-        # 3. Execution Plan
-        # 4. Architecture
-        # 5. Human checkpoint (block)
-        # 6. Execution
-        # 7. Test
-        # 8. QA
+        # 1. Idea Generation
+        # 2. Research
+        # 3. Plan
+        # 4. Execution Plan
+        # 5. Architecture
+        # 6. Human checkpoint (block)
+        # 7. Execution
+        # 8. Test
+        # 9. QA
 ```
 
 - Each stage is an async function.
@@ -250,7 +252,7 @@ POST /runs
   "id": "run-1718755200",
   "idea": "A subscription box for indoor plants",
   "status": "running",
-  "current_agent_id": "research",
+  "current_agent_id": "idea-generation",
   "created_at": "2024-06-19T00:00:00Z"
 }
 ```

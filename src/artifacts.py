@@ -5,6 +5,7 @@ from pathlib import Path
 from src.config import Config
 
 ARTIFACT_PATHS = {
+    "idea-generation": "outputs/00-idea-brief.md",
     "research": "outputs/01-research-report.md",
     "plan": "outputs/02-plan-report.md",
     "execution-plan": "outputs/03-execution-plan.md",
