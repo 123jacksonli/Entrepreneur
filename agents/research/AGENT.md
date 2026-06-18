@@ -38,6 +38,13 @@ Sections:
 6. **Risks & Unknowns** — what could not be verified.
 7. **Sources** — URL list with access dates.
 
+## Model Configuration
+
+- **Provider:** Zhipu AI (智谱AI) via OpenRouter
+- **Endpoint:** `https://openrouter.ai/api/v1`
+- **Default model:** `z-ai/glm-4.5`
+- **Client:** `src/llm_factory.create_completion("research", ...)`
+
 ## Constraints
 
 - **Do not write code.**

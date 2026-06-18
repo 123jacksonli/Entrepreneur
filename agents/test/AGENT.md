@@ -34,6 +34,13 @@ Sections:
 5. **Flaky or Skipped Tests** — notes.
 6. **Recommendation** — proceed to QA or send back to Execution Agent.
 
+## Model Configuration
+
+- **Provider:** Zhipu AI (智谱AI) via OpenRouter
+- **Endpoint:** `https://openrouter.ai/api/v1`
+- **Default model:** `z-ai/glm-4.5`
+- **Client:** `src/llm_factory.create_completion("test", ...)`
+
 ## Constraints
 
 - **Do not fix bugs.** Report them for the Execution Agent or QA Agent to address.

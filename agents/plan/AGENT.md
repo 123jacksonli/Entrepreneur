@@ -38,6 +38,13 @@ Sections:
 6. **Go / No-Go / Pivot Verdict** — clear decision with rationale.
 7. **Strategic Recommendations** — what the execution plan should focus on.
 
+## Model Configuration
+
+- **Provider:** Zhipu AI (智谱AI) via OpenRouter
+- **Endpoint:** `https://openrouter.ai/api/v1`
+- **Default model:** `z-ai/glm-4.5`
+- **Client:** `src/llm_factory.create_completion("plan", ...)`
+
 ## Constraints
 
 - **Do not write code.**

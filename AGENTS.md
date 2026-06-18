@@ -82,7 +82,18 @@ Entrepreneur/
 | Test | `outputs/07-test-report.md` |
 | QA | `outputs/08-qa-report.md` |
 
-## 6. When This File Must Be Updated
+## 7. LLM Provider
+
+All agents use **Zhipu AI (智谱AI)** models by default, routed through **OpenRouter** using the shared `src/llm_factory.py`.
+
+- **Endpoint:** `https://openrouter.ai/api/v1`
+- **Default model:** `z-ai/glm-4.5` (set via `DEFAULT_AGENT_MODEL`)
+- **API key:** `OPENAI_API_KEY` (OpenRouter key)
+- **Per-agent overrides:** `temperature` and `model` per agent role in `AGENT_OVERRIDES`
+
+To switch to direct Zhipu AI, set `ZHIPU_API_KEY` and `ZHIPU_BASE_URL` instead. The factory will auto-detect the direct configuration.
+
+## 8. When This File Must Be Updated
 
 Update this file whenever you:
 - Add, remove, or rename an agent stage.

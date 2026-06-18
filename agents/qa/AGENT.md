@@ -43,6 +43,13 @@ Sections:
 8. **Verdict** — Accept / Conditional Accept / Reject with rationale.
 9. **Rework Instructions** — if not accepted, what must be fixed and by which agent.
 
+## Model Configuration
+
+- **Provider:** Zhipu AI (智谱AI) via OpenRouter
+- **Endpoint:** `https://openrouter.ai/api/v1`
+- **Default model:** `z-ai/glm-4.5`
+- **Client:** `src/llm_factory.create_completion("qa", ...)`
+
 ## Constraints
 
 - **Do not write production code.**

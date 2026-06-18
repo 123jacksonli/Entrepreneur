@@ -39,6 +39,13 @@ Sections:
 8. **Non-Functional Requirements** — performance, security, reliability.
 9. **Open Questions for Human Review** — trade-offs or decisions needing approval.
 
+## Model Configuration
+
+- **Provider:** Zhipu AI (智谱AI) via OpenRouter
+- **Endpoint:** `https://openrouter.ai/api/v1`
+- **Default model:** `z-ai/glm-4.5`
+- **Client:** `src/llm_factory.create_completion("architecture", ...)`
+
 ## Constraints
 
 - **Do not write production code.**

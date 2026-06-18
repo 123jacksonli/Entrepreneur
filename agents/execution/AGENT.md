@@ -39,6 +39,13 @@ Sections:
 
 Plus: the actual codebase in the repository.
 
+## Model Configuration
+
+- **Provider:** Zhipu AI (智谱AI) via OpenRouter
+- **Endpoint:** `https://openrouter.ai/api/v1`
+- **Default model:** `z-ai/glm-4.5`
+- **Client:** `src/llm_factory.create_completion("execution", ...)`
+
 ## Constraints
 
 - **Only run after human approval.**

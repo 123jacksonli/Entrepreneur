@@ -35,6 +35,13 @@ Sections:
 6. **Definition of Done** — how we know each milestone is complete.
 7. **Open Questions** — anything the Architecture Agent should resolve.
 
+## Model Configuration
+
+- **Provider:** Zhipu AI (智谱AI) via OpenRouter
+- **Endpoint:** `https://openrouter.ai/api/v1`
+- **Default model:** `z-ai/glm-4.5`
+- **Client:** `src/llm_factory.create_completion("execution-plan", ...)`
+
 ## Constraints
 
 - **Do not write code.**
