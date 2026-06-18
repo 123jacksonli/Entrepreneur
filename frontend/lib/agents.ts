@@ -60,7 +60,7 @@ export const AGENTS: Agent[] = [
   {
     id: "qa",
     name: "QA Agent",
-    description: "Challenges output and gives verdict.",
+    description: "Challenges output and triggers rework if rejected.",
     status: "idle",
     outputs: [],
     logs: [],
@@ -76,4 +76,5 @@ export const EDGES: PipelineEdge[] = [
   { id: "e5", source: "architecture", target: "execution" },
   { id: "e6", source: "execution", target: "test" },
   { id: "e7", source: "test", target: "qa" },
+  { id: "e8", source: "qa", target: "execution", label: "reject" },
 ];

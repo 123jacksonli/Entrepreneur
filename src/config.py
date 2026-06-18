@@ -16,6 +16,12 @@ class Config:
     SQLITE_PATH = os.getenv("SQLITE_PATH", "data/entrepreneur.db")
     OUTPUTS_DIR = os.getenv("OUTPUTS_DIR", "outputs")
 
+    # Autonomous operation safeguards
+    MAX_IDEA_ITERATIONS = int(os.getenv("MAX_IDEA_ITERATIONS", "3"))
+    MAX_QA_ITERATIONS = int(os.getenv("MAX_QA_ITERATIONS", "3"))
+    MAX_TOKENS_PER_AGENT = int(os.getenv("MAX_TOKENS_PER_AGENT", "0")) or None
+    STOP_ON_HIGH_COST = os.getenv("STOP_ON_HIGH_COST", "false").lower() == "true"
+
     @classmethod
     def api_key_and_base_url(cls) -> tuple[str, str]:
         if cls.ZHIPU_API_KEY:

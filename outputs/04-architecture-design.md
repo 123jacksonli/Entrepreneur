@@ -114,18 +114,17 @@ Endpoints:
 | GET | `/runs/{run_id}` | Get run status and artifacts |
 | GET | `/runs/{run_id}/events` | SSE stream of agent events |
 | GET | `/runs` | List past runs |
-
 | GET | `/health` | Health check |
 
 ### 5.2 Orchestrator (`src/orchestrator.py`)
 
-A state machine that drives the pipeline:
+A state machine that drives the pipeline autonomously:
 
 ```python
 class Orchestrator:
     async def start_run(self, idea: str) -> Run:
-        # Loop: Idea Generation → Research → Plan until Plan approves
-        while True:
+        # Autonomous loop: Idea Generation → Research → Plan
+        for _ in range(Config.MAX_IDEA_ITERATIONS):
             idea_brief = await self.run_agent("idea-generation", idea)
             research = await self.run_agent("research", idea_brief)
             plan = await self.run_agent("plan", research)
@@ -133,20 +132,23 @@ class Orchestrator:
             if plan.decision == "stop":
                 return Run(status="stopped")
             if plan.decision == "iterate":
-                continue  # loop again with Plan Agent notes
+                continue
             break  # approved
+        else:
+            return Run(status="failed", reason="max idea iterations")
 
         # 4. Execution Plan
         # 5. Architecture
         # 6. Execution
         # 7. Test
-        # 8. QA
+        # 8. QA (loops back to Execution on reject, up to MAX_QA_ITERATIONS)
 ```
 
 - Each stage is an async function.
 - Between stages, state is persisted to SQLite.
 - Events are emitted via an in-memory queue consumed by the SSE endpoint.
 - The Plan Agent is the only approval gate; once approved, execution proceeds automatically.
+- `MAX_IDEA_ITERATIONS` and `MAX_QA_ITERATIONS` prevent infinite loops.
 
 ### 5.3 Base Agent (`src/agents/base.py`)
 

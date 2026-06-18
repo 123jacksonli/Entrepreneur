@@ -1,4 +1,4 @@
-"""Pipeline orchestrator for the 8-agent startup builder workflow."""
+"""Pipeline orchestrator for the autonomous 8-agent startup builder workflow."""
 
 import asyncio
 from dataclasses import dataclass, field
@@ -24,17 +24,21 @@ class Orchestrator:
         self,
         state_store: StateStore | None = None,
         event_callback: Callable[[PipelineEvent], None] | None = None,
+        config: Config | None = None,
     ) -> None:
         self.state = state_store or StateStore()
         self.event_callback = event_callback
+        self.config = config or Config()
 
     async def start_run(self, run_id: str, idea: str) -> None:
-        """Start and drive a pipeline run."""
+        """Start and drive a pipeline run autonomously."""
         self.state.create_run(run_id, idea, "running", "idea-generation")
         await self._emit(PipelineEvent(type="run-started", run_id=run_id))
 
-        # Loop: Idea Generation → Research → Plan until Plan approves or stops.
-        while True:
+        # Autonomous loop: Idea Generation → Research → Plan until Plan approves or stops.
+        idea_iterations = 0
+        while idea_iterations < self.config.MAX_IDEA_ITERATIONS:
+            idea_iterations += 1
             await self._run_agent(run_id, "idea-generation", idea)
             await self._run_agent(run_id, "research", idea)
             await self._run_agent(run_id, "plan", idea)
@@ -54,15 +58,28 @@ class Orchestrator:
                         type="loop-iteration",
                         run_id=run_id,
                         agent_id="plan",
-                        payload={"next": "idea-generation"},
+                        payload={"next": "idea-generation", "iteration": idea_iterations},
                     )
                 )
                 continue
 
             # decision == "approve"
             break
+        else:
+            # Exceeded max iterations without approval.
+            self.state.update_run(run_id, "failed", "plan")
+            await self._emit(
+                PipelineEvent(
+                    type="run-failed",
+                    run_id=run_id,
+                    agent_id="plan",
+                    payload={"reason": "max_idea_iterations_exceeded"},
+                )
+            )
+            return
 
         # TODO: implement Execution Plan, Architecture, Execution, Test, QA.
+        # QA rejections loop back to Execution Agent up to MAX_QA_ITERATIONS.
         self.state.update_run(run_id, "waiting", "execution-plan")
 
     async def _run_agent(self, run_id: str, agent_id: str, idea: str) -> AgentResult:

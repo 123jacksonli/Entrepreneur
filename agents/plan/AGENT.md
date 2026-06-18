@@ -6,7 +6,7 @@ The third agent in the Entrepreneur Agent Startup pipeline. The Plan Agent perfo
 
 ## Goal
 
-Determine if the business idea is viable and attractive, and produce a strategic plan. If the idea is weak, request another iteration through Idea Generation → Research → Plan.
+Determine if the business idea is viable and attractive, and produce a strategic plan. If the idea is weak, request another iteration through Idea Generation → Research → Plan. In autonomous mode, the orchestrator retries the loop automatically without human intervention.
 
 ## Responsibilities
 
@@ -51,6 +51,7 @@ Sections:
 - **Do not design architecture.**
 - Decisions must be justified by evidence from the research report or new searches.
 - Be honest about weak ideas; recommend `stop` or `iterate` when appropriate.
+- Respect `MAX_IDEA_ITERATIONS` to avoid infinite loops.
 
 ## Workflow
 
