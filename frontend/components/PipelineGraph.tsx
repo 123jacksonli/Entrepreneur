@@ -27,7 +27,7 @@ export function PipelineGraph() {
         id: agent.id,
         type: "agent",
         position: { x: index * 220, y: index % 2 === 0 ? 100 : 250 },
-        data: agent,
+        data: agent as unknown as Record<string, unknown>,
       })),
     [agents]
   );
