@@ -1,0 +1,78 @@
+import { Agent, PipelineEdge } from "@/types";
+
+export const AGENTS: Agent[] = [
+  {
+    id: "research",
+    name: "Research Agent",
+    description: "Gathers market data and trends online.",
+    status: "idle",
+    outputs: [],
+    logs: [],
+  },
+  {
+    id: "plan",
+    name: "Plan Agent",
+    description: "Analyzes competitors and validates feasibility.",
+    status: "idle",
+    outputs: [],
+    logs: [],
+  },
+  {
+    id: "execution-plan",
+    name: "Execution Plan Agent",
+    description: "Builds milestones, tasks, and timelines.",
+    status: "idle",
+    outputs: [],
+    logs: [],
+  },
+  {
+    id: "architecture",
+    name: "Architecture Agent",
+    description: "Designs the technical blueprint.",
+    status: "idle",
+    outputs: [],
+    logs: [],
+  },
+  {
+    id: "human-in-loop",
+    name: "Human in the Loop",
+    description: "Mandatory approval checkpoint.",
+    status: "idle",
+    outputs: [],
+    logs: [],
+  },
+  {
+    id: "execution",
+    name: "Execution Agent",
+    description: "Writes code, config, tests, and docs.",
+    status: "idle",
+    outputs: [],
+    logs: [],
+  },
+  {
+    id: "test",
+    name: "Test Agent",
+    description: "Runs tests and reports bugs.",
+    status: "idle",
+    outputs: [],
+    logs: [],
+  },
+  {
+    id: "qa",
+    name: "QA Agent",
+    description: "Challenges output and gives verdict.",
+    status: "idle",
+    outputs: [],
+    logs: [],
+  },
+];
+
+export const EDGES: PipelineEdge[] = [
+  { id: "e1", source: "research", target: "plan" },
+  { id: "e2", source: "plan", target: "execution-plan" },
+  { id: "e3", source: "execution-plan", target: "architecture" },
+  { id: "e4", source: "architecture", target: "human-in-loop" },
+  { id: "e5", source: "human-in-loop", target: "execution" },
+  { id: "e6", source: "execution", target: "test" },
+  { id: "e7", source: "test", target: "qa" },
+];
