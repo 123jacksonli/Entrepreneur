@@ -100,6 +100,18 @@ async def get_run(run_id: str) -> dict:
     return run
 
 
+@app.get("/runs/{run_id}/artifacts")
+async def get_run_artifacts(run_id: str) -> dict:
+    """Return all artifact contents for a run."""
+    from src.artifacts import ArtifactManager
+
+    manager = ArtifactManager(run_id=run_id)
+    artifacts = {}
+    for stage, path in manager.list_artifacts().items():
+        artifacts[stage] = manager.read_path(path)
+    return {"run_id": run_id, "artifacts": artifacts}
+
+
 @app.get("/runs/{run_id}/events")
 async def run_events(run_id: str):
     """SSE stream of pipeline events for a run."""

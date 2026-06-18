@@ -180,7 +180,11 @@ class Orchestrator:
 
         agent_cls = AGENTS.get(agent_id)
         if agent_cls:
-            agent = agent_cls()
+            agent = agent_cls(artifact_manager=ArtifactManager(run_id=run_id))
+            agent.run_id = run_id
+            agent.event_callback = lambda event: asyncio.create_task(
+                self._emit(PipelineEvent(**event))
+            )
             result = await agent.run(context)
         else:
             # Placeholder for agents that are not yet implemented.
@@ -199,7 +203,9 @@ class Orchestrator:
         )
         return result
 
-    async def _emit(self, event: PipelineEvent) -> None:
+    async def _emit(self, event: PipelineEvent | dict) -> None:
+        if isinstance(event, dict):
+            event = PipelineEvent(**event)
         if self.event_callback:
             self.event_callback(event)
         for queue in list(self._subscribers.get(event.run_id, [])):

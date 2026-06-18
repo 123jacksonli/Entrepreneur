@@ -5,15 +5,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PipelineGraph } from "@/components/PipelineGraph";
 import { AgentDetailPanel } from "@/components/AgentDetailPanel";
 import { HistoryTab } from "@/components/HistoryTab";
+import { IdeaLibraryTab } from "@/components/IdeaLibraryTab";
+import { IdeaDetailTab } from "@/components/IdeaDetailTab";
 import { useAppStore } from "@/lib/store";
 import { AGENTS } from "@/lib/agents";
 import { startRun, stopRun } from "@/lib/api";
 import { useRunEvents } from "@/lib/sse";
-import { AgentStatus, PipelineEvent } from "@/types";
+import { AgentLogEntry, AgentStatus, PipelineEvent } from "@/types";
 
 export default function Home() {
-  const { agents, setAgents, updateAgent, addRun, activeRunId, setActiveRunId } =
-    useAppStore();
+  const {
+    agents,
+    setAgents,
+    updateAgent,
+    addAgentLog,
+    addRun,
+    activeRunId,
+    setActiveRunId,
+  } = useAppStore();
   const [isRunning, setIsRunning] = useState(false);
   const [idea, setIdea] = useState(
     "Build a small startup that solves a common daily problem using AI."
@@ -49,6 +58,9 @@ export default function Home() {
     }
     if (event.type === "agent-complete" && event.agent_id) {
       updateAgent(event.agent_id, { status: event.status ?? "completed" });
+    }
+    if (event.type === "agent-log" && event.agent_id && event.payload) {
+      addAgentLog(event.agent_id, event.payload as unknown as AgentLogEntry);
     }
   };
 
@@ -113,6 +125,9 @@ export default function Home() {
       <Tabs defaultValue="pipeline" className="flex-1 flex flex-col">
         <TabsList>
           <TabsTrigger value="pipeline">Live Pipeline</TabsTrigger>
+          <TabsTrigger value="approved">Approved Ideas</TabsTrigger>
+          <TabsTrigger value="disapproved">Disapproved Ideas</TabsTrigger>
+          <TabsTrigger value="detail">Idea Detail</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
@@ -121,6 +136,18 @@ export default function Home() {
           <aside className="w-80 border rounded-lg">
             <AgentDetailPanel />
           </aside>
+        </TabsContent>
+
+        <TabsContent value="approved" className="flex-1">
+          <IdeaLibraryTab filter="approved" />
+        </TabsContent>
+
+        <TabsContent value="disapproved" className="flex-1">
+          <IdeaLibraryTab filter="disapproved" />
+        </TabsContent>
+
+        <TabsContent value="detail" className="flex-1">
+          <IdeaDetailTab />
         </TabsContent>
 
         <TabsContent value="history" className="flex-1">

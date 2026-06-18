@@ -5,6 +5,7 @@ import pytest
 
 from src.agents.base import AgentContext
 from src.agents.execution import ExecutionAgent
+from src.artifacts import ArtifactManager
 from src.config import Config
 
 
@@ -47,19 +48,19 @@ async def test_execution_agent_creates_branch_and_commits(tmp_path, monkeypatch)
     # Run from inside the temp repository so git_ops resolves the repo root.
     monkeypatch.chdir(str(repo))
 
-    agent = ExecutionAgent()
+    agent = ExecutionAgent(artifact_manager=ArtifactManager(run_id="run-exec"))
     context = AgentContext(run_id="run-exec", idea="A test startup idea")
     result = await agent.run(context)
 
     assert result.status == "completed"
-    assert any("outputs/05-implementation-summary.md" in o for o in result.outputs)
+    assert any("05-implementation-summary.md" in o for o in result.outputs)
 
     # Branch was created and checked out.
     current_branch = _run_shell("git rev-parse --abbrev-ref HEAD", cwd=str(repo))
     assert current_branch == "exec/run-exec"
 
     # The implementation summary file exists and is tracked.
-    summary_path = repo / "outputs" / "05-implementation-summary.md"
+    summary_path = repo / "outputs" / "run-exec" / "05-implementation-summary.md"
     assert summary_path.exists()
     content = summary_path.read_text()
     assert "run-exec" in content
@@ -86,3 +87,4 @@ async def test_execution_agent_creates_branch_and_commits(tmp_path, monkeypatch)
         cwd=str(tmp_path),
     )
     assert "workspace/run-exec/README.md" in ls_tree
+    assert "outputs/run-exec/05-implementation-summary.md" in ls_tree

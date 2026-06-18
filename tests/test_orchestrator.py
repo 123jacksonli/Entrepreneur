@@ -64,7 +64,7 @@ async def test_orchestrator_runs_full_pipeline(tmp_path, monkeypatch):
     repo.mkdir()
     _init_git_repo(repo)
 
-    outputs_dir = repo / "outputs"
+    outputs_dir = repo / "outputs" / "run-orch"
     workspace_dir = repo / "workspace"
     db_path = repo / "state.db"
 

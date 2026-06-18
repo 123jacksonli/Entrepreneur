@@ -1,9 +1,14 @@
 """Base class for all agents in the pipeline."""
 
+import asyncio
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Callable
 
 from src.types import AgentLogEntry, AgentStatus
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -22,9 +27,12 @@ class AgentResult:
     metadata: dict = field(default_factory=dict)
 
 
+@dataclass
 class BaseAgent(ABC):
     id: str = ""
     name: str = ""
+    run_id: str = ""
+    event_callback: Callable[[dict], None] | None = None
 
     @abstractmethod
     async def run(self, context: AgentContext) -> AgentResult:
@@ -34,8 +42,28 @@ class BaseAgent(ABC):
     def log(self, message: str, level: str = "info") -> AgentLogEntry:
         from datetime import datetime, timezone
 
-        return {
+        entry: AgentLogEntry = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": level,  # type: ignore[assignment]
             "message": message,
         }
+
+        if self.event_callback and self.run_id:
+            event = {
+                "type": "agent-log",
+                "run_id": self.run_id,
+                "agent_id": self.id,
+                "payload": dict(entry),
+            }
+            try:
+                asyncio.get_running_loop()
+                asyncio.create_task(self._emit_async(event))
+            except RuntimeError:
+                # No running loop; skip real-time emission.
+                pass
+
+        return entry
+
+    async def _emit_async(self, event: dict) -> None:
+        if self.event_callback:
+            self.event_callback(event)

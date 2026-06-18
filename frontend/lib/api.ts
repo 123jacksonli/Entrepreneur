@@ -37,6 +37,16 @@ export async function fetchRun(id: string): Promise<RunRecord> {
   return res.json();
 }
 
+export async function fetchRunArtifacts(
+  id: string
+): Promise<{ run_id: string; artifacts: Record<string, string> }> {
+  const res = await fetch(`${API_BASE}/runs/${id}/artifacts`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch artifacts: ${res.statusText}`);
+  }
+  return res.json();
+}
+
 // Local-storage helpers used by the mock orchestrator and history fallback.
 export async function loadLocalRuns(): Promise<RunRecord[]> {
   if (typeof window === "undefined") return [];

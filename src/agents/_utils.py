@@ -37,3 +37,37 @@ def parse_decision(
         if decision in valid:
             return decision
     return default
+
+
+def ask_agent(agent_id: str, system_prompt: str, user_prompt: str, fallback: str) -> str:
+    """Ask another agent role a focused question without writing artifacts.
+
+    This lets agents collaborate: e.g., the Research Agent can ask the Idea
+    Generation Agent to clarify the brief, or the Plan Agent can ask the
+    Architecture Agent for a quick feasibility note.
+    """
+    return call_llm(agent_id, system_prompt, user_prompt, fallback)
+
+
+def ask_idea_agent(idea_brief: str, question: str) -> str:
+    """Ask the Idea Generation Agent to clarify or expand the idea brief."""
+    system = (
+        "You are the Idea Generation Agent. A downstream agent needs clarification "
+        "about the startup idea below. Answer the question concisely and stay focused "
+        "on the idea's problem, solution, target customer, and value proposition."
+    )
+    user = f"Idea brief:\n{idea_brief}\n\nQuestion:\n{question}"
+    fallback = f"The idea brief should be refined: {question}"
+    return ask_agent("idea-generation", system, user, fallback)
+
+
+def ask_architecture_agent(execution_plan: str, plan_report: str, question: str) -> str:
+    """Ask the Architecture Agent for a quick feasibility / flexibility note."""
+    system = (
+        "You are the Architecture Agent. The Plan Agent is evaluating a startup idea "
+        "and needs a quick technical feasibility or flexibility assessment. Keep the "
+        "answer concise; do not produce a full architecture document."
+    )
+    user = f"Plan report:\n{plan_report}\n\nExecution plan:\n{execution_plan}\n\nQuestion:\n{question}"
+    fallback = "The architecture should be kept simple and flexible for the MVP."
+    return ask_agent("architecture", system, user, fallback)
