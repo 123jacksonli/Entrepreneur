@@ -93,10 +93,28 @@ All agents use **Zhipu AI (智谱AI)** models by default, routed through **OpenR
 
 To switch to direct Zhipu AI, set `ZHIPU_API_KEY` and `ZHIPU_BASE_URL` instead. The factory will auto-detect the direct configuration.
 
-## 8. When This File Must Be Updated
+## 8. Frontend Dashboard
+
+A Next.js frontend in `frontend/` visualizes the agent pipeline:
+
+- **Live Pipeline tab** — interactive graph of all 8 agents, their statuses, and workflow connections.
+- **Agent detail panel** — click any agent to see its outputs and logs.
+- **History tab** — chronological list of past pipeline runs.
+
+Run the frontend locally:
+
+```bash
+cd frontend
+npm run dev
+```
+
+The frontend uses mock orchestration until the backend API is available.
+
+## 9. When This File Must Be Updated
 
 Update this file whenever you:
 - Add, remove, or rename an agent stage.
 - Change the hand-off contract or artifact naming convention.
 - Change the rules about what an agent may or may not produce.
 - Add project-wide constraints (budget, stack, compliance, etc.).
+- Change the frontend architecture or agent visualization.
