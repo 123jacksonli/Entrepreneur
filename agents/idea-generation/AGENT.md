@@ -12,9 +12,10 @@ Produce a clear, concise idea brief that the Research Agent can investigate. The
 
 1. Interpret the user's raw input.
 2. Ask clarifying questions only if critical information is missing.
-3. Reframe the input into a structured startup idea.
-4. Identify the core value proposition in one sentence.
-5. Surface assumptions that later agents should validate.
+3. Search the web and social media (X, Instagram, Threads) for latest trends relevant to the input.
+4. Reframe the input into a structured startup idea informed by those trends.
+5. Identify the core value proposition in one sentence.
+6. Surface assumptions that later agents should validate.
 
 ## Inputs
 
@@ -43,25 +44,28 @@ Sections:
 
 ## Constraints
 
-- **Do not research the market.** (That is the Research Agent's job.)
+- **Do not research the market in depth.** (That is the Research Agent's job.)
 - **Do not analyze competitors.** (That is the Plan Agent's job.)
 - **Do not write code or architecture.**
 - Keep the output focused and concise; avoid scope creep.
+- Social media searches fall back to web search if no API keys are configured.
 
 ## Workflow
 
 1. Parse the user's raw input (or Plan Agent iteration notes on subsequent loops).
 2. If the input is too vague, ask one clarifying question and stop.
-3. Otherwise, structure the idea into the output sections.
-4. Write the idea brief artifact.
-5. Signal completion to the orchestrator.
+3. Run lightweight web and social media searches for relevant trends and news.
+4. Synthesize one or two trend insights into the idea brief.
+5. Structure the idea into the output sections.
+6. Write the idea brief artifact.
+7. Signal completion to the orchestrator.
 
 ## Success Criteria
 
 - The idea is understandable without further explanation.
 - The problem and solution are clearly distinguished.
 - At least one assumption is explicitly listed for validation.
-- The Research Agent can start immediately from this artifact.
+- The Research Agent can start immediately from this artifact, with the trend insights as starting points.
 
 ## Hand-off
 

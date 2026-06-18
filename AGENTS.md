@@ -95,7 +95,17 @@ To prevent runaway execution and costs:
 - `STOP_ON_HIGH_COST` — optional flag to pause if estimated cost exceeds a threshold.
 - All agent decisions and iteration reasons are logged to `outputs/` and the state store.
 
-## 7. LLM Provider
+## 7. External Data Sources
+
+The **Idea Generation Agent** and **Plan Agent** can search online for the latest news and social-media trends.
+
+- **Web search:** `src/tools/web_search.py` uses DuckDuckGo by default; optionally SerpAPI.
+- **Social media:** `src/tools/social_trends.py` supports X (Twitter), Instagram, and Threads.
+  - X requires API keys (`X_API_*`) or a RapidAPI key.
+  - Instagram and Threads require a RapidAPI key or official API access.
+  - If no API keys are configured, social searches fall back to web search.
+
+## 8. LLM Provider
 
 All agents use **Zhipu AI (智谱AI)** models by default, routed through **OpenRouter** using the shared `src/llm_factory.py`.
 

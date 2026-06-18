@@ -52,12 +52,13 @@ Sections:
 - Decisions must be justified by evidence from the research report or new searches.
 - Be honest about weak ideas; recommend `stop` or `iterate` when appropriate.
 - Respect `MAX_IDEA_ITERATIONS` to avoid infinite loops.
+- Social media searches fall back to web search if no API keys are configured.
 
 ## Workflow
 
 1. Read the idea brief and research report.
 2. Identify competitors and alternatives.
-3. Search for additional competitor details if needed.
+3. Search the web and social media for latest competitor and trend signals.
 4. Score the idea on feasibility, desirability, and viability.
 5. Write the plan report artifact with a clear decision.
 6. Signal completion to the orchestrator.

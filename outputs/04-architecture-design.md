@@ -82,6 +82,9 @@ Entrepreneur/
 │   ├── orchestrator.py         # Pipeline state machine
 │   ├── state.py                # SQLite state store
 │   ├── artifacts.py            # Artifact read/write
+│   ├── tools/                  # External data tools
+│   │   ├── web_search.py
+│   │   └── social_trends.py
 │   └── agents/                 # Agent implementations
 │       ├── __init__.py
 │       ├── base.py             # Base agent class
@@ -149,6 +152,18 @@ class Orchestrator:
 - Events are emitted via an in-memory queue consumed by the SSE endpoint.
 - The Plan Agent is the only approval gate; once approved, execution proceeds automatically.
 - `MAX_IDEA_ITERATIONS` and `MAX_QA_ITERATIONS` prevent infinite loops.
+
+### 5.7 External Data Tools (`src/tools/`)
+
+- `web_search.py` — DuckDuckGo/SerpAPI search for news and web pages.
+- `social_trends.py` — X/Instagram/Threads trend search with API-key fallback to web search.
+- Used by **Idea Generation Agent** and **Plan Agent** to incorporate latest trends.
+
+Required environment variables (optional):
+
+- `SERPAPI_API_KEY` — for Google search via SerpAPI.
+- `X_API_KEY`, `X_API_SECRET`, `X_ACCESS_TOKEN`, `X_ACCESS_TOKEN_SECRET` — for X API v2.
+- `RAPIDAPI_KEY` — for Instagram/Threads/X alternatives.
 
 ### 5.3 Base Agent (`src/agents/base.py`)
 
