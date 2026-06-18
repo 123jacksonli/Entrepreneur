@@ -83,8 +83,9 @@ Entrepreneur/
 │   ├── state.py                # SQLite state store
 │   ├── artifacts.py            # Artifact read/write
 │   ├── execution_workspace.py  # Per-run workspace helper
-│   ├── tools/                  # External data and git tools
+│   ├── tools/                  # External data, scraping, and git tools
 │   │   ├── web_search.py
+│   │   ├── web_scraper.py
 │   │   ├── social_trends.py
 │   │   └── git_ops.py
 │   └── agents/                 # Agent implementations
@@ -173,8 +174,9 @@ class Orchestrator:
 ### 5.9 External Data Tools (`src/tools/`)
 
 - `web_search.py` — DuckDuckGo/SerpAPI search for news and web pages.
+- `web_scraper.py` — fetch a URL and extract article-like text with BeautifulSoup.
 - `social_trends.py` — X/Instagram/Threads trend search with API-key fallback to web search.
-- Used by **Idea Generation Agent** and **Plan Agent** to incorporate latest trends.
+- Used by **Research Agent** and **Plan Agent** to gather and read source material.
 
 Required environment variables (optional):
 

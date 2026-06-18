@@ -100,6 +100,7 @@ To prevent runaway execution and costs:
 The **Idea Generation Agent** and **Plan Agent** can search online for the latest news and social-media trends.
 
 - **Web search:** `src/tools/web_search.py` uses DuckDuckGo by default; optionally SerpAPI.
+- **Web scraping:** `src/tools/web_scraper.py` fetches pages and extracts article-like text for deeper reading.
 - **Social media:** `src/tools/social_trends.py` supports X (Twitter), Instagram, and Threads.
   - X requires API keys (`X_API_*`) or a RapidAPI key.
   - Instagram and Threads require a RapidAPI key or official API access.
