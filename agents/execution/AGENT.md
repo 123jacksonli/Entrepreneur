@@ -16,6 +16,7 @@ Turn the architecture design and approved scope into working software.
 4. Write configuration, environment setup, and basic documentation.
 5. Include tests alongside implementation code.
 6. Keep changes minimal and focused on the approved scope.
+7. **Use GitHub MCP for version control:** create repositories/branches, commit code after each milestone, and push changes so execution history is preserved.
 
 ## Inputs
 
@@ -58,11 +59,13 @@ Plus: the actual codebase in the repository.
 ## Workflow
 
 1. Read all approved artifacts.
-2. Initialize the project structure and dependencies.
-3. Implement milestone by milestone.
-4. Run tests and fix obvious failures before finishing.
-5. Write the implementation summary artifact.
-6. Signal completion to the orchestrator.
+2. Check GitHub MCP authentication status. If unauthenticated, pause and request setup.
+3. Create or select the target repository/branch for this execution run.
+4. Implement milestone by milestone.
+5. **Commit and push after every completed milestone** using GitHub MCP or git CLI as fallback.
+6. Run tests and fix obvious failures before finishing.
+7. Write the implementation summary artifact.
+8. Signal completion to the orchestrator.
 
 ## Success Criteria
 
@@ -70,6 +73,7 @@ Plus: the actual codebase in the repository.
 - Implemented features match the approved scope.
 - Tests exist and pass for core logic.
 - Code is readable and follows the architecture design.
+- **Every milestone is committed to version control with a descriptive message.**
 
 ## Hand-off
 

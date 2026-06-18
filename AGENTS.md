@@ -68,6 +68,7 @@ Entrepreneur/
 4. **Hand-off contract.** Each agent must write its output to a clearly named artifact and signal completion to the orchestrator.
 5. **Human gate is blocking.** The pipeline pauses at the Human-in-the-Loop checkpoint until the user explicitly approves, rejects, or requests changes.
 6. **Iteration is normal.** QA can reject output and send it back to the Execution Agent. Earlier stages can also be revisited if the human requests it.
+7. **Execution Agent uses GitHub MCP.** The Execution Agent must create/select repositories, commit after each milestone, and push changes so all execution output is version-controlled.
 
 ## 5. Artifact Naming Convention
 
