@@ -4,7 +4,7 @@
 
 This repository builds an **agent-driven startup builder** for entrepreneurs. A user describes a business idea (or even just an interest area), and a pipeline of specialized agents autonomously refines, researches, plans, designs, builds, tests, and validates startup ideas.
 
-> **Current phase:** agent specification. No code is written yet.
+> **Current phase:** runnable pipeline. All eight agent stages are implemented and orchestrated end-to-end.
 
 ## 2. Agent Pipeline
 

@@ -19,6 +19,7 @@ class AgentResult:
     outputs: list[str] = field(default_factory=list)
     logs: list[AgentLogEntry] = field(default_factory=list)
     artifact_text: str = ""
+    metadata: dict = field(default_factory=dict)
 
 
 class BaseAgent(ABC):

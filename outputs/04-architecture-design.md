@@ -128,31 +128,38 @@ A state machine that drives the pipeline autonomously:
 
 ```python
 class Orchestrator:
-    async def start_run(self, idea: str) -> Run:
+    async def start_run(self, run_id: str, idea: str) -> None:
         # Autonomous loop: Idea Generation → Research → Plan
         for _ in range(Config.MAX_IDEA_ITERATIONS):
-            idea_brief = await self.run_agent("idea-generation", idea)
-            research = await self.run_agent("research", idea_brief)
-            plan = await self.run_agent("plan", research)
+            await self._run_agent(run_id, "idea-generation", idea)
+            await self._run_agent(run_id, "research", idea)
+            plan_result = await self._run_agent(run_id, "plan", idea)
 
-            if plan.decision == "stop":
-                return Run(status="stopped")
-            if plan.decision == "iterate":
+            decision = plan_result.metadata.get("decision", "approve")
+            if decision == "stop":
+                return  # run stopped
+            if decision == "iterate":
                 continue
             break  # approved
         else:
-            return Run(status="failed", reason="max idea iterations")
+            return  # max idea iterations exceeded
 
-        # 4. Execution Plan
-        # 5. Architecture
-        # 6. Execution
-        # 7. Test
-        # 8. QA (loops back to Execution on reject, up to MAX_QA_ITERATIONS)
+        await self._run_agent(run_id, "execution-plan", idea)
+        await self._run_agent(run_id, "architecture", idea)
+
+        # QA rejections loop back to Execution up to MAX_QA_ITERATIONS.
+        for _ in range(Config.MAX_QA_ITERATIONS):
+            await self._run_agent(run_id, "execution", idea)
+            await self._run_agent(run_id, "test", idea)
+            qa_result = await self._run_agent(run_id, "qa", idea)
+            if qa_result.metadata.get("verdict") in ("accept", "conditional accept"):
+                break
 ```
 
-- Each stage is an async function.
+- `_run_agent` looks up the agent class in the `AGENTS` registry, loads all prior artifacts, and runs the agent.
+- Agent results carry a `metadata` dict with parsed decisions (e.g., `decision`, `verdict`).
 - Between stages, state is persisted to SQLite.
-- Events are emitted via an in-memory queue consumed by the SSE endpoint.
+- Events are emitted via an in-memory callback consumed by the SSE endpoint.
 - The Plan Agent is the only approval gate; once approved, execution proceeds automatically.
 - `MAX_IDEA_ITERATIONS` and `MAX_QA_ITERATIONS` prevent infinite loops.
 - Execution Agent creates a dedicated branch per run and never commits to `main`.

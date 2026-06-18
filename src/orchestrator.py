@@ -2,6 +2,7 @@
 
 import asyncio
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import AsyncGenerator, Callable
 
 from src.agents import AGENTS
@@ -41,22 +42,22 @@ class Orchestrator:
 
         # Autonomous loop: Idea Generation → Research → Plan until Plan approves or stops.
         idea_iterations = 0
+        plan_decision = "iterate"
         while idea_iterations < self.config.MAX_IDEA_ITERATIONS:
             idea_iterations += 1
             await self._run_agent(run_id, "idea-generation", idea)
             await self._run_agent(run_id, "research", idea)
-            await self._run_agent(run_id, "plan", idea)
+            plan_result = await self._run_agent(run_id, "plan", idea)
+            plan_decision = plan_result.metadata.get("decision", "approve")
 
-            # TODO: Parse the Plan Agent artifact to determine decision.
-            # For now, approve on the first iteration so the scaffold can continue.
-            decision = "approve"
-
-            if decision == "stop":
+            if plan_decision == "stop":
                 self.state.update_run(run_id, "stopped", "plan")
-                await self._emit(PipelineEvent(type="run-stopped", run_id=run_id, agent_id="plan"))
+                await self._emit(
+                    PipelineEvent(type="run-stopped", run_id=run_id, agent_id="plan")
+                )
                 return
 
-            if decision == "iterate":
+            if plan_decision == "iterate":
                 await self._emit(
                     PipelineEvent(
                         type="loop-iteration",
@@ -67,7 +68,7 @@ class Orchestrator:
                 )
                 continue
 
-            # decision == "approve"
+            # plan_decision == "approve"
             break
         else:
             # Exceeded max iterations without approval.
@@ -82,8 +83,7 @@ class Orchestrator:
             )
             return
 
-        # Run the remaining stages. Agents that are not yet implemented fall
-        # back to a placeholder completion.
+        # Run the remaining stages.
         await self._run_agent(run_id, "execution-plan", idea)
         await self._run_agent(run_id, "architecture", idea)
         await self._run_agent(run_id, "execution", idea)
@@ -91,14 +91,27 @@ class Orchestrator:
 
         # QA rejections loop back to Execution Agent up to MAX_QA_ITERATIONS.
         qa_iterations = 0
+        qa_verdict = "reject"
         while qa_iterations < self.config.MAX_QA_ITERATIONS:
             qa_iterations += 1
             qa_result = await self._run_agent(run_id, "qa", idea)
-            # TODO: Parse the QA artifact to determine decision.
-            decision = "approve"
-            if decision == "approve":
+            qa_verdict = qa_result.metadata.get("verdict", "accept")
+            if qa_verdict in ("accept", "conditional accept"):
                 break
+            await self._emit(
+                PipelineEvent(
+                    type="loop-iteration",
+                    run_id=run_id,
+                    agent_id="qa",
+                    payload={
+                        "next": "execution",
+                        "iteration": qa_iterations,
+                        "verdict": qa_verdict,
+                    },
+                )
+            )
             await self._run_agent(run_id, "execution", idea)
+            await self._run_agent(run_id, "test", idea)
         else:
             self.state.update_run(run_id, "failed", "qa")
             await self._emit(
@@ -112,10 +125,11 @@ class Orchestrator:
             return
 
         self.state.update_run(run_id, "completed", "qa")
+        await self._emit(
+            PipelineEvent(type="run-completed", run_id=run_id, agent_id="qa")
+        )
 
     async def _run_agent(self, run_id: str, agent_id: str, idea: str) -> AgentResult:
-        from datetime import datetime, timezone
-
         await self._emit(
             PipelineEvent(
                 type="agent-start",
@@ -129,9 +143,7 @@ class Orchestrator:
         context_artifacts = {
             stage: self.artifacts.read(stage) for stage in ARTIFACT_PATHS
         }
-        context = AgentContext(
-            run_id=run_id, idea=idea, artifacts=context_artifacts
-        )
+        context = AgentContext(run_id=run_id, idea=idea, artifacts=context_artifacts)
 
         agent_cls = AGENTS.get(agent_id)
         if agent_cls:
@@ -148,11 +160,11 @@ class Orchestrator:
                 type="agent-complete",
                 run_id=run_id,
                 agent_id=agent_id,
-                status="completed",
+                status=result.status,
                 timestamp=datetime.now(timezone.utc).isoformat(),
             )
         )
-        return AgentResult(status="completed")
+        return result
 
     async def _emit(self, event: PipelineEvent) -> None:
         if self.event_callback:
