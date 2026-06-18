@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.checkpoint import CheckpointDecision, CheckpointResult
 from src.orchestrator import Orchestrator
 
 
@@ -55,13 +54,6 @@ async def get_run(run_id: str) -> dict:
     if not run:
         return {"error": "Run not found"}
     return run
-
-
-@app.post("/runs/{run_id}/approve")
-async def approve_run(run_id: str, decision: str, notes: str = "") -> dict:
-    cp_result = CheckpointResult(decision=CheckpointDecision(decision), notes=notes)
-    await orchestrator.approve_checkpoint(run_id, cp_result)
-    return {"status": "ok", "decision": decision}
 
 
 @app.get("/runs/{run_id}/events")

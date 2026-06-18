@@ -2,11 +2,11 @@
 
 ## 1. Overview
 
-This document describes the architecture for the **Entrepreneur Agent Startup** system: a multi-agent pipeline that helps entrepreneurs generate, refine, research, plan, design, build, test, and validate startup ideas, with a web dashboard for visualization and a mandatory human-in-the-loop checkpoint.
+This document describes the architecture for the **Entrepreneur Agent Startup** system: a multi-agent pipeline that helps entrepreneurs generate, refine, research, plan, design, build, test, and validate startup ideas, with a web dashboard for visualization.
 
 The system has two main parts:
 
-1. **Agent Backend** — Python orchestrator that runs the 9-agent pipeline.
+1. **Agent Backend** — Python orchestrator that runs the 8-agent pipeline.
 2. **Web Frontend** — Next.js dashboard that visualizes the pipeline and run history.
 
 ## 2. Tech Stack
@@ -47,8 +47,8 @@ The system has two main parts:
 ┌──────────────────────────▼─────────────────────────────────────┐
 │                      Agent Orchestrator                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │ State Machine│  │   Artifact   │  │   Human Checkpoint   │  │
-│  │  (pipeline)  │  │   Manager    │  │      (blocking)      │  │
+│  │ State Machine│  │   Artifact   │  │                      │  │
+│  │  (pipeline)  │  │   Manager    │  │                      │  │
 │  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘  │
 └─────────┼─────────────────┼─────────────────────┼──────────────┘
           │                 │                     │
@@ -82,7 +82,6 @@ Entrepreneur/
 │   ├── orchestrator.py         # Pipeline state machine
 │   ├── state.py                # SQLite state store
 │   ├── artifacts.py            # Artifact read/write
-│   ├── checkpoint.py           # Human-in-the-loop gate
 │   └── agents/                 # Agent implementations
 │       ├── __init__.py
 │       ├── base.py             # Base agent class
@@ -115,7 +114,7 @@ Endpoints:
 | GET | `/runs/{run_id}` | Get run status and artifacts |
 | GET | `/runs/{run_id}/events` | SSE stream of agent events |
 | GET | `/runs` | List past runs |
-| POST | `/runs/{run_id}/approve` | Human approval to proceed past checkpoint |
+
 | GET | `/health` | Health check |
 
 ### 5.2 Orchestrator (`src/orchestrator.py`)
@@ -139,16 +138,15 @@ class Orchestrator:
 
         # 4. Execution Plan
         # 5. Architecture
-        # 6. Human checkpoint (block)
-        # 7. Execution
-        # 8. Test
-        # 9. QA
+        # 6. Execution
+        # 7. Test
+        # 8. QA
 ```
 
 - Each stage is an async function.
 - Between stages, state is persisted to SQLite.
 - Events are emitted via an in-memory queue consumed by the SSE endpoint.
-- On human checkpoint, the orchestrator waits on an `asyncio.Event` until `/approve` is called.
+- The Plan Agent is the only approval gate; once approved, execution proceeds automatically.
 
 ### 5.3 Base Agent (`src/agents/base.py`)
 
@@ -208,11 +206,7 @@ The **Plan Agent** acts as the first approval gate:
 - If `iterate`, the orchestrator loops back to Idea Generation.
 - Only approved ideas proceed to Execution Plan.
 
-### 5.7 Human Checkpoint (`src/checkpoint.py`)
 
-- Raised after Architecture Agent completes.
-- Blocks orchestrator until `POST /runs/{run_id}/approve` is called.
-- Supports: `approve`, `reject`, `iterate`.
 
 ## 6. Frontend Architecture
 

@@ -1,11 +1,10 @@
-"""Pipeline orchestrator for the 9-agent startup builder workflow."""
+"""Pipeline orchestrator for the 8-agent startup builder workflow."""
 
 import asyncio
 from dataclasses import dataclass, field
 from typing import AsyncGenerator, Callable
 
 from src.agents.base import AgentResult
-from src.checkpoint import CheckpointResult, HumanCheckpoint
 from src.config import Config
 from src.state import StateStore
 
@@ -24,11 +23,9 @@ class Orchestrator:
     def __init__(
         self,
         state_store: StateStore | None = None,
-        checkpoint: HumanCheckpoint | None = None,
         event_callback: Callable[[PipelineEvent], None] | None = None,
     ) -> None:
         self.state = state_store or StateStore()
-        self.checkpoint = checkpoint or HumanCheckpoint()
         self.event_callback = event_callback
 
     async def start_run(self, run_id: str, idea: str) -> None:
@@ -36,7 +33,7 @@ class Orchestrator:
         self.state.create_run(run_id, idea, "running", "idea-generation")
         await self._emit(PipelineEvent(type="run-started", run_id=run_id))
 
-        # Idea Generation → Research → Plan loop until Plan approves or stops.
+        # Loop: Idea Generation → Research → Plan until Plan approves or stops.
         while True:
             await self._run_agent(run_id, "idea-generation", idea)
             await self._run_agent(run_id, "research", idea)
@@ -65,7 +62,7 @@ class Orchestrator:
             # decision == "approve"
             break
 
-        # TODO: implement Execution Plan, Architecture, Human checkpoint, Execution, Test, QA.
+        # TODO: implement Execution Plan, Architecture, Execution, Test, QA.
         self.state.update_run(run_id, "waiting", "execution-plan")
 
     async def _run_agent(self, run_id: str, agent_id: str, idea: str) -> AgentResult:
@@ -98,13 +95,6 @@ class Orchestrator:
     async def _emit(self, event: PipelineEvent) -> None:
         if self.event_callback:
             self.event_callback(event)
-
-    async def approve_checkpoint(self, run_id: str, result: CheckpointResult) -> None:
-        self.checkpoint.resolve(result)
-        self.state.update_run(run_id, "running", "execution")
-        await self._emit(
-            PipelineEvent(type="checkpoint-resolved", run_id=run_id, payload={"decision": result.decision.value})
-        )
 
     async def event_stream(self, run_id: str) -> AsyncGenerator[str, None]:
         """Yield SSE formatted events. Placeholder implementation."""

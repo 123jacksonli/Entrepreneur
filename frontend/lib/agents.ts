@@ -42,14 +42,6 @@ export const AGENTS: Agent[] = [
     logs: [],
   },
   {
-    id: "human-in-loop",
-    name: "Human in the Loop",
-    description: "Mandatory approval checkpoint.",
-    status: "idle",
-    outputs: [],
-    logs: [],
-  },
-  {
     id: "execution",
     name: "Execution Agent",
     description: "Writes code, config, tests, and docs.",
@@ -81,8 +73,7 @@ export const EDGES: PipelineEdge[] = [
   { id: "e2", source: "plan", target: "execution-plan", label: "approve" },
   { id: "e3", source: "plan", target: "idea-generation", label: "iterate" },
   { id: "e4", source: "execution-plan", target: "architecture" },
-  { id: "e5", source: "architecture", target: "human-in-loop" },
-  { id: "e6", source: "human-in-loop", target: "execution" },
-  { id: "e7", source: "execution", target: "test" },
-  { id: "e8", source: "test", target: "qa" },
+  { id: "e5", source: "architecture", target: "execution" },
+  { id: "e6", source: "execution", target: "test" },
+  { id: "e7", source: "test", target: "qa" },
 ];

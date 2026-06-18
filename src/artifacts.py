@@ -10,10 +10,9 @@ ARTIFACT_PATHS = {
     "plan": "outputs/02-plan-report.md",
     "execution-plan": "outputs/03-execution-plan.md",
     "architecture": "outputs/04-architecture-design.md",
-    "human-in-loop": "outputs/05-human-decision.md",
-    "execution": "outputs/06-implementation-summary.md",
-    "test": "outputs/07-test-report.md",
-    "qa": "outputs/08-qa-report.md",
+    "execution": "outputs/05-implementation-summary.md",
+    "test": "outputs/06-test-report.md",
+    "qa": "outputs/07-qa-report.md",
 }
 
 

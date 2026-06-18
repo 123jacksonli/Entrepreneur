@@ -2,7 +2,7 @@
 
 ## 1. Project Vision
 
-This repository builds an **agent-driven startup builder** for entrepreneurs. A user describes a business idea (or even just an interest area), and a pipeline of specialized agents refines, researches, plans, designs, builds, tests, and validates startup ideas — with a mandatory human checkpoint before any code is written.
+This repository builds an **agent-driven startup builder** for entrepreneurs. A user describes a business idea (or even just an interest area), and a pipeline of specialized agents refines, researches, plans, designs, builds, tests, and validates startup ideas.
 
 > **Current phase:** agent specification. No code is written yet.
 
@@ -27,11 +27,6 @@ This repository builds an **agent-driven startup builder** for entrepreneurs. A 
        ▼
 ┌─────────────┐
 │ Architecture│  ──► Tech stack, modules, APIs, data models
-└──────┬──────┘
-       ▼
-┌─────────────┐
-│   HUMAN     │  ──► Mandatory review gate (go / no-go / iterate)
-│  IN LOOP    │
 └──────┬──────┘
        ▼
 ┌─────────────┐
@@ -60,21 +55,19 @@ Entrepreneur/
 │   ├── architecture/AGENT.md              # Architecture Agent spec
 │   ├── execution/AGENT.md                 # Execution Agent spec
 │   ├── test/AGENT.md                      # Test Agent spec
-│   ├── qa/AGENT.md                        # QA Agent spec
-│   └── human-in-loop/AGENT.md             # Human-in-the-loop checkpoint spec
+│   └── qa/AGENT.md                        # QA Agent spec
 └── .git/
 ```
 
 ## 4. Shared Rules
 
 1. **One agent per step.** Each agent owns exactly one stage of the pipeline.
-2. **No code before the checkpoint.** The Execution Agent is the only agent allowed to write implementation code, and it may only run after human approval.
+2. **No code before Plan approval.** The Execution Agent is the only agent allowed to write implementation code, and it may only run after the Plan Agent has approved the idea.
 3. **Artifacts only.** Idea Generation, Research, Plan, Execution Plan, and Architecture agents produce markdown artifacts, not runnable code.
 4. **Hand-off contract.** Each agent must write its output to a clearly named artifact and signal completion to the orchestrator.
 5. **Idea loop.** Idea Generation → Research → Plan form a loop. The Plan Agent approves, iterates, or stops. Only approved ideas proceed to Execution Plan.
-6. **Human gate is blocking.** The pipeline pauses at the Human-in-the-Loop checkpoint until the user explicitly approves, rejects, or requests changes.
-7. **Iteration is normal.** QA can reject output and send it back to the Execution Agent. Earlier stages can also be revisited if the human requests it.
-8. **Execution Agent uses GitHub MCP.** The Execution Agent must create/select repositories, commit after each milestone, and push changes so all execution output is version-controlled.
+6. **Iteration is normal.** QA can reject output and send it back to the Execution Agent. Earlier stages can also be revisited if the Plan Agent requests iteration.
+7. **Execution Agent uses GitHub MCP.** The Execution Agent must create/select repositories, commit after each milestone, and push changes so all execution output is version-controlled.
 
 ## 5. Artifact Naming Convention
 
@@ -85,10 +78,9 @@ Entrepreneur/
 | Plan | `outputs/02-plan-report.md` |
 | Execution Plan | `outputs/03-execution-plan.md` |
 | Architecture | `outputs/04-architecture-design.md` |
-| Human Gate | `outputs/05-human-decision.md` |
-| Execution | `outputs/06-implementation-summary.md` |
-| Test | `outputs/07-test-report.md` |
-| QA | `outputs/08-qa-report.md` |
+| Execution | `outputs/05-implementation-summary.md` |
+| Test | `outputs/06-test-report.md` |
+| QA | `outputs/07-qa-report.md` |
 
 ## 6. LLM Provider
 
@@ -105,7 +97,7 @@ To switch to direct Zhipu AI, set `ZHIPU_API_KEY` and `ZHIPU_BASE_URL` instead. 
 
 A Next.js frontend in `frontend/` visualizes the agent pipeline:
 
-- **Live Pipeline tab** — interactive graph of all 9 agents, their statuses, and workflow connections, including the Idea Generation → Research → Plan loop.
+- **Live Pipeline tab** — interactive graph of all 8 agents, their statuses, and workflow connections, including the Idea Generation → Research → Plan loop.
 - **Agent detail panel** — click any agent to see its outputs and logs.
 - **History tab** — chronological list of past pipeline runs.
 
