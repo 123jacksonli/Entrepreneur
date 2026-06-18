@@ -6,7 +6,7 @@ The first agent in the Entrepreneur Agent Startup pipeline. The Idea Generation 
 
 ## Goal
 
-Produce a clear, concise idea brief that the Research Agent can investigate. The brief should include the problem, proposed solution, target customer, and any constraints.
+Produce a clear, concise idea brief that the Research Agent can investigate. The brief should include the problem, proposed solution, target customer, and any constraints. This agent may be invoked multiple times if the Plan Agent requests iteration.
 
 ## Responsibilities
 
@@ -50,7 +50,7 @@ Sections:
 
 ## Workflow
 
-1. Parse the user's raw input.
+1. Parse the user's raw input (or Plan Agent iteration notes on subsequent loops).
 2. If the input is too vague, ask one clarifying question and stop.
 3. Otherwise, structure the idea into the output sections.
 4. Write the idea brief artifact.
@@ -65,4 +65,5 @@ Sections:
 
 ## Hand-off
 
-When finished, pass `outputs/00-idea-brief.md` to the **Research Agent**.
+- On the first pass, pass `outputs/00-idea-brief.md` to the **Research Agent**.
+- If the Plan Agent returns an **iterate** decision, use its notes to refine the brief and loop back to the **Research Agent**.

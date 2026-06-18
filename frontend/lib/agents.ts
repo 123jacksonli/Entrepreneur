@@ -20,7 +20,7 @@ export const AGENTS: Agent[] = [
   {
     id: "plan",
     name: "Plan Agent",
-    description: "Analyzes competitors and validates feasibility.",
+    description: "Analyzes competitors and acts as the idea approval gate.",
     status: "idle",
     outputs: [],
     logs: [],
@@ -78,10 +78,11 @@ export const AGENTS: Agent[] = [
 export const EDGES: PipelineEdge[] = [
   { id: "e0", source: "idea-generation", target: "research" },
   { id: "e1", source: "research", target: "plan" },
-  { id: "e2", source: "plan", target: "execution-plan" },
-  { id: "e3", source: "execution-plan", target: "architecture" },
-  { id: "e4", source: "architecture", target: "human-in-loop" },
-  { id: "e5", source: "human-in-loop", target: "execution" },
-  { id: "e6", source: "execution", target: "test" },
-  { id: "e7", source: "test", target: "qa" },
+  { id: "e2", source: "plan", target: "execution-plan", label: "approve" },
+  { id: "e3", source: "plan", target: "idea-generation", label: "iterate" },
+  { id: "e4", source: "execution-plan", target: "architecture" },
+  { id: "e5", source: "architecture", target: "human-in-loop" },
+  { id: "e6", source: "human-in-loop", target: "execution" },
+  { id: "e7", source: "execution", target: "test" },
+  { id: "e8", source: "test", target: "qa" },
 ];

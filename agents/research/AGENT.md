@@ -12,6 +12,8 @@ Produce a comprehensive, source-backed research report that answers:
 - What trends support (or threaten) this idea?
 - What data, statistics, or benchmarks are available?
 
+This agent may run multiple times if the Plan Agent sends the pipeline back for iteration.
+
 ## Responsibilities
 
 1. Search the web for relevant market reports, news, and public data.
@@ -71,4 +73,4 @@ Sections:
 
 ## Hand-off
 
-When finished, pass `outputs/01-research-report.md` to the **Plan Agent**.
+When finished, pass `outputs/01-research-report.md` to the **Plan Agent**. If the Plan Agent later requests iteration, the Research Agent will receive the updated idea brief and produce a new research report.

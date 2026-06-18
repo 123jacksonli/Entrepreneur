@@ -125,9 +125,18 @@ A state machine that drives the pipeline:
 ```python
 class Orchestrator:
     async def start_run(self, idea: str) -> Run:
-        # 1. Idea Generation
-        # 2. Research
-        # 3. Plan
+        # Loop: Idea Generation → Research → Plan until Plan approves
+        while True:
+            idea_brief = await self.run_agent("idea-generation", idea)
+            research = await self.run_agent("research", idea_brief)
+            plan = await self.run_agent("plan", research)
+
+            if plan.decision == "stop":
+                return Run(status="stopped")
+            if plan.decision == "iterate":
+                continue  # loop again with Plan Agent notes
+            break  # approved
+
         # 4. Execution Plan
         # 5. Architecture
         # 6. Human checkpoint (block)
@@ -190,7 +199,16 @@ CREATE TABLE agent_runs (
 - Enforces naming convention from `AGENTS.md`.
 - Provides `load_artifact(stage)` helper.
 
-### 5.6 Human Checkpoint (`src/checkpoint.py`)
+### 5.6 Idea Approval Gate
+
+The **Plan Agent** acts as the first approval gate:
+
+- Runs after Research Agent.
+- Decisions: `approve`, `iterate`, `stop`.
+- If `iterate`, the orchestrator loops back to Idea Generation.
+- Only approved ideas proceed to Execution Plan.
+
+### 5.7 Human Checkpoint (`src/checkpoint.py`)
 
 - Raised after Architecture Agent completes.
 - Blocks orchestrator until `POST /runs/{run_id}/approve` is called.

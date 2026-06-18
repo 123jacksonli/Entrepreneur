@@ -10,17 +10,17 @@ This repository builds an **agent-driven startup builder** for entrepreneurs. A 
 
 ```
 ┌─────────────────┐
-│ Idea Generation │  ──► Turn raw input into a structured idea brief
-└────────┬────────┘
-         ▼
-┌─────────────┐
-│   Research  │  ──► Gather market data, trends, and sources
-└──────┬──────┘
-       ▼
-┌─────────────┐
-│     Plan    │  ──► Competitor analysis + idea feasibility check
-└──────┬──────┘
-       ▼
+│ Idea Generation │ ◄──────────┐
+└────────┬────────┘            │
+         ▼                      │ iterate
+┌─────────────┐                 │
+│   Research  │                 │
+└──────┬──────┘                 │
+       ▼                        │
+┌─────────────┐    approve      │
+│     Plan    │ ─────────────►  │
+└──────┬──────┘                 │
+       ▼                        │
 ┌─────────────┐
 │ Exec. Plan  │  ──► Step-by-step milestones, tasks, timeline
 └──────┬──────┘
@@ -71,9 +71,10 @@ Entrepreneur/
 2. **No code before the checkpoint.** The Execution Agent is the only agent allowed to write implementation code, and it may only run after human approval.
 3. **Artifacts only.** Idea Generation, Research, Plan, Execution Plan, and Architecture agents produce markdown artifacts, not runnable code.
 4. **Hand-off contract.** Each agent must write its output to a clearly named artifact and signal completion to the orchestrator.
-5. **Human gate is blocking.** The pipeline pauses at the Human-in-the-Loop checkpoint until the user explicitly approves, rejects, or requests changes.
-6. **Iteration is normal.** QA can reject output and send it back to the Execution Agent. Earlier stages can also be revisited if the human requests it.
-7. **Execution Agent uses GitHub MCP.** The Execution Agent must create/select repositories, commit after each milestone, and push changes so all execution output is version-controlled.
+5. **Idea loop.** Idea Generation → Research → Plan form a loop. The Plan Agent approves, iterates, or stops. Only approved ideas proceed to Execution Plan.
+6. **Human gate is blocking.** The pipeline pauses at the Human-in-the-Loop checkpoint until the user explicitly approves, rejects, or requests changes.
+7. **Iteration is normal.** QA can reject output and send it back to the Execution Agent. Earlier stages can also be revisited if the human requests it.
+8. **Execution Agent uses GitHub MCP.** The Execution Agent must create/select repositories, commit after each milestone, and push changes so all execution output is version-controlled.
 
 ## 5. Artifact Naming Convention
 
@@ -104,7 +105,7 @@ To switch to direct Zhipu AI, set `ZHIPU_API_KEY` and `ZHIPU_BASE_URL` instead. 
 
 A Next.js frontend in `frontend/` visualizes the agent pipeline:
 
-- **Live Pipeline tab** — interactive graph of all 9 agents, their statuses, and workflow connections.
+- **Live Pipeline tab** — interactive graph of all 9 agents, their statuses, and workflow connections, including the Idea Generation → Research → Plan loop.
 - **Agent detail panel** — click any agent to see its outputs and logs.
 - **History tab** — chronological list of past pipeline runs.
 
@@ -122,6 +123,7 @@ The frontend uses mock orchestration until the backend API is available.
 Update this file whenever you:
 - Add, remove, or rename an agent stage.
 - Change the hand-off contract or artifact naming convention.
+- Change the loop logic or approval gates.
 - Change the rules about what an agent may or may not produce.
 - Add project-wide constraints (budget, stack, compliance, etc.).
 - Change the frontend architecture or agent visualization.
