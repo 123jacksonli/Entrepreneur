@@ -1,4 +1,4 @@
-export type AgentStatus = "idle" | "running" | "completed" | "failed" | "waiting";
+export type AgentStatus = "idle" | "running" | "completed" | "failed" | "waiting" | "stopped";
 
 export interface Agent {
   id: string;
@@ -24,8 +24,18 @@ export interface PipelineEdge {
 
 export interface RunRecord {
   id: string;
-  startedAt: string;
-  completedAt?: string;
+  idea: string;
   status: AgentStatus;
-  agents: Agent[];
+  current_agent_id?: string;
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface PipelineEvent {
+  type: string;
+  run_id: string;
+  agent_id?: string;
+  status?: AgentStatus;
+  timestamp?: string;
+  payload?: Record<string, unknown>;
 }

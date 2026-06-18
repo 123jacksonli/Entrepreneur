@@ -54,10 +54,10 @@ export async function* runPipeline(
 
   const record: RunRecord = {
     id: runId,
-    startedAt,
-    completedAt: new Date().toISOString(),
+    idea: "Mock pipeline run",
     status: "completed",
-    agents: agents.map((a) => ({ ...a, status: "completed", logs: [], outputs: [] })),
+    created_at: startedAt,
+    completed_at: new Date().toISOString(),
   };
 
   yield { type: "run-complete" as const, record };

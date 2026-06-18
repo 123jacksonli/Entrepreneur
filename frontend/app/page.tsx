@@ -7,67 +7,107 @@ import { AgentDetailPanel } from "@/components/AgentDetailPanel";
 import { HistoryTab } from "@/components/HistoryTab";
 import { useAppStore } from "@/lib/store";
 import { AGENTS } from "@/lib/agents";
-import { runPipeline } from "@/lib/mock-orchestrator";
-import { saveRun } from "@/lib/api";
+import { startRun, stopRun } from "@/lib/api";
+import { useRunEvents } from "@/lib/sse";
+import { AgentStatus, PipelineEvent } from "@/types";
 
 export default function Home() {
-  const { agents, setAgents, updateAgent, addRun } = useAppStore();
+  const { agents, setAgents, updateAgent, addRun, activeRunId, setActiveRunId } =
+    useAppStore();
   const [isRunning, setIsRunning] = useState(false);
+  const [idea, setIdea] = useState(
+    "Build a small startup that solves a common daily problem using AI."
+  );
 
   useEffect(() => {
     if (agents.length === 0) {
-      setAgents(AGENTS);
+      setAgents(
+        AGENTS.map((a) => ({
+          ...a,
+          status: "idle" as AgentStatus,
+          logs: [],
+          outputs: [],
+        }))
+      );
     }
   }, [agents.length, setAgents]);
 
-  const handleRun = async () => {
-    setIsRunning(true);
-    const baseAgents = AGENTS.map((a) => ({
-      ...a,
-      status: "idle" as const,
-      logs: [],
-      outputs: [],
-    }));
-    setAgents(baseAgents);
+  const resetAgents = () => {
+    setAgents(
+      AGENTS.map((a) => ({
+        ...a,
+        status: "idle" as AgentStatus,
+        logs: [],
+        outputs: [],
+      }))
+    );
+  };
 
-    const currentAgents = [...baseAgents];
-
-    for await (const event of runPipeline(baseAgents)) {
-      if (event.type === "agent-start") {
-        const agent = currentAgents.find((a) => a.id === event.agentId)!;
-        updateAgent(event.agentId, {
-          status: "running",
-          logs: [...agent.logs, event.log],
-        });
-      }
-      if (event.type === "agent-complete") {
-        const agent = currentAgents.find((a) => a.id === event.agentId)!;
-        updateAgent(event.agentId, {
-          status: event.status,
-          outputs: event.outputs,
-          logs: [...agent.logs, event.log],
-        });
-      }
-      if (event.type === "run-complete") {
-        addRun(event.record);
-        await saveRun(event.record);
-      }
+  const handleEvent = (event: PipelineEvent) => {
+    if (event.type === "agent-start" && event.agent_id) {
+      updateAgent(event.agent_id, { status: "running" });
     }
+    if (event.type === "agent-complete" && event.agent_id) {
+      updateAgent(event.agent_id, { status: event.status ?? "completed" });
+    }
+  };
 
+  const handleComplete = () => {
     setIsRunning(false);
+  };
+
+  useRunEvents(activeRunId, handleEvent, handleComplete);
+
+  const handleRun = async () => {
+    resetAgents();
+    setIsRunning(true);
+    try {
+      const run = await startRun(idea);
+      setActiveRunId(run.id);
+      addRun(run);
+    } catch (error) {
+      console.error("Failed to start run:", error);
+      setIsRunning(false);
+    }
+  };
+
+  const handleStop = async () => {
+    if (!activeRunId) return;
+    try {
+      await stopRun(activeRunId);
+    } catch (error) {
+      console.error("Failed to stop run:", error);
+    }
   };
 
   return (
     <main className="h-screen flex flex-col p-4 gap-4">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Entrepreneur Agent Startup</h1>
-        <button
-          onClick={handleRun}
-          disabled={isRunning}
-          className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-        >
-          {isRunning ? "Running..." : "Run Pipeline"}
-        </button>
+        <div className="flex items-center gap-2 flex-1 min-w-[16rem]">
+          <input
+            type="text"
+            value={idea}
+            onChange={(e) => setIdea(e.target.value)}
+            placeholder="Describe your startup idea..."
+            className="flex-1 px-3 py-2 border rounded text-sm"
+            disabled={isRunning}
+          />
+          <button
+            onClick={handleRun}
+            disabled={isRunning}
+            className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+          >
+            {isRunning ? "Running..." : "Run Pipeline"}
+          </button>
+          <button
+            onClick={handleStop}
+            disabled={!isRunning}
+            className="px-4 py-2 bg-red-600 text-white rounded disabled:opacity-50"
+          >
+            Stop
+          </button>
+        </div>
       </header>
 
       <Tabs defaultValue="pipeline" className="flex-1 flex flex-col">

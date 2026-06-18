@@ -35,15 +35,32 @@ class Orchestrator:
         self.config = config or Config()
         self.artifacts = artifact_manager or ArtifactManager()
 
+        self._run_lock = asyncio.Lock()
+        self._stop_flags: set[str] = set()
+        self._subscribers: dict[str, list[asyncio.Queue[PipelineEvent]]] = {}
+
     async def start_run(self, run_id: str, idea: str) -> None:
-        """Start and drive a pipeline run autonomously."""
+        """Start and drive a pipeline run autonomously.
+
+        Runs are serialized so only one pipeline is active at a time. A stop
+        request lets the currently active agent finish, then exits cleanly.
+        """
+        async with self._run_lock:
+            await self._run_pipeline(run_id, idea)
+
+    async def _run_pipeline(self, run_id: str, idea: str) -> None:
         self.state.create_run(run_id, idea, "running", "idea-generation")
+        self._clear_stop(run_id)
         await self._emit(PipelineEvent(type="run-started", run_id=run_id))
 
         # Autonomous loop: Idea Generation → Research → Plan until Plan approves or stops.
         idea_iterations = 0
         plan_decision = "iterate"
         while idea_iterations < self.config.MAX_IDEA_ITERATIONS:
+            if self._should_stop(run_id):
+                await self._finish_run(run_id, "stopped", "plan")
+                return
+
             idea_iterations += 1
             await self._run_agent(run_id, "idea-generation", idea)
             await self._run_agent(run_id, "research", idea)
@@ -51,10 +68,7 @@ class Orchestrator:
             plan_decision = plan_result.metadata.get("decision", "approve")
 
             if plan_decision == "stop":
-                self.state.update_run(run_id, "stopped", "plan")
-                await self._emit(
-                    PipelineEvent(type="run-stopped", run_id=run_id, agent_id="plan")
-                )
+                await self._finish_run(run_id, "stopped", "plan")
                 return
 
             if plan_decision == "iterate":
@@ -72,32 +86,29 @@ class Orchestrator:
             break
         else:
             # Exceeded max iterations without approval.
-            self.state.update_run(run_id, "failed", "plan")
-            await self._emit(
-                PipelineEvent(
-                    type="run-failed",
-                    run_id=run_id,
-                    agent_id="plan",
-                    payload={"reason": "max_idea_iterations_exceeded"},
-                )
-            )
+            await self._finish_run(run_id, "failed", "plan")
             return
 
         # Run the remaining stages.
         await self._run_agent(run_id, "execution-plan", idea)
         await self._run_agent(run_id, "architecture", idea)
-        await self._run_agent(run_id, "execution", idea)
-        await self._run_agent(run_id, "test", idea)
 
         # QA rejections loop back to Execution Agent up to MAX_QA_ITERATIONS.
         qa_iterations = 0
         qa_verdict = "reject"
         while qa_iterations < self.config.MAX_QA_ITERATIONS:
+            if self._should_stop(run_id):
+                await self._finish_run(run_id, "stopped", "qa")
+                return
+
             qa_iterations += 1
+            await self._run_agent(run_id, "execution", idea)
+            await self._run_agent(run_id, "test", idea)
             qa_result = await self._run_agent(run_id, "qa", idea)
             qa_verdict = qa_result.metadata.get("verdict", "accept")
             if qa_verdict in ("accept", "conditional accept"):
                 break
+
             await self._emit(
                 PipelineEvent(
                     type="loop-iteration",
@@ -110,26 +121,48 @@ class Orchestrator:
                     },
                 )
             )
-            await self._run_agent(run_id, "execution", idea)
-            await self._run_agent(run_id, "test", idea)
         else:
-            self.state.update_run(run_id, "failed", "qa")
-            await self._emit(
-                PipelineEvent(
-                    type="run-failed",
-                    run_id=run_id,
-                    agent_id="qa",
-                    payload={"reason": "max_qa_iterations_exceeded"},
-                )
-            )
+            await self._finish_run(run_id, "failed", "qa")
             return
 
-        self.state.update_run(run_id, "completed", "qa")
-        await self._emit(
-            PipelineEvent(type="run-completed", run_id=run_id, agent_id="qa")
+        await self._finish_run(run_id, "completed", "qa")
+
+    def request_stop(self, run_id: str) -> None:
+        """Request that the run stop after the current agent finishes."""
+        self._stop_flags.add(run_id)
+
+    def _should_stop(self, run_id: str) -> bool:
+        return run_id in self._stop_flags
+
+    def _clear_stop(self, run_id: str) -> None:
+        self._stop_flags.discard(run_id)
+
+    async def _finish_run(
+        self, run_id: str, status: str, current_agent_id: str
+    ) -> None:
+        terminal = status in ("completed", "stopped", "failed")
+        self.state.update_run(run_id, status, current_agent_id, completed=terminal)
+        event_type = (
+            "run-completed"
+            if status == "completed"
+            else "run-stopped"
+            if status == "stopped"
+            else "run-failed"
         )
+        await self._emit(
+            PipelineEvent(type=event_type, run_id=run_id, agent_id=current_agent_id)
+        )
+        self._cleanup_run(run_id)
+
+    def _cleanup_run(self, run_id: str) -> None:
+        self._subscribers.pop(run_id, None)
+        self._stop_flags.discard(run_id)
 
     async def _run_agent(self, run_id: str, agent_id: str, idea: str) -> AgentResult:
+        if self._should_stop(run_id):
+            # Skip new agents once a stop has been requested.
+            return AgentResult(status="idle")
+
         await self._emit(
             PipelineEvent(
                 type="agent-start",
@@ -169,7 +202,43 @@ class Orchestrator:
     async def _emit(self, event: PipelineEvent) -> None:
         if self.event_callback:
             self.event_callback(event)
+        for queue in list(self._subscribers.get(event.run_id, [])):
+            try:
+                queue.put_nowait(event)
+            except asyncio.QueueFull:
+                pass
 
     async def event_stream(self, run_id: str) -> AsyncGenerator[str, None]:
-        """Yield SSE formatted events. Placeholder implementation."""
-        yield f"data: {{\"type\": \"connected\", \"run_id\": \"{run_id}\"}}\n\n"
+        """Yield SSE formatted events for a run."""
+        queue: asyncio.Queue[PipelineEvent] = asyncio.Queue(maxsize=256)
+        self._subscribers.setdefault(run_id, []).append(queue)
+
+        try:
+            # Send a connection ack.
+            ack = PipelineEvent(type="connected", run_id=run_id)
+            yield f"data: {self._event_to_json(ack)}\n\n"
+
+            while True:
+                event = await asyncio.wait_for(queue.get(), timeout=300.0)
+                yield f"data: {self._event_to_json(event)}\n\n"
+                if event.type in ("run-completed", "run-stopped", "run-failed"):
+                    break
+        except asyncio.TimeoutError:
+            pass
+        finally:
+            self._subscribers.get(run_id, []).remove(queue)
+
+    @staticmethod
+    def _event_to_json(event: PipelineEvent) -> str:
+        import json
+
+        return json.dumps(
+            {
+                "type": event.type,
+                "run_id": event.run_id,
+                "agent_id": event.agent_id,
+                "status": event.status,
+                "timestamp": event.timestamp,
+                "payload": event.payload,
+            }
+        )

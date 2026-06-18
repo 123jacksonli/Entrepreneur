@@ -6,6 +6,7 @@ const styles: Record<AgentStatus, string> = {
   completed: "bg-green-500 text-white",
   failed: "bg-red-500 text-white",
   waiting: "bg-yellow-300 text-yellow-900",
+  stopped: "bg-orange-400 text-white",
 };
 
 interface Props {

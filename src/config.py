@@ -29,6 +29,14 @@ class Config:
     # Run isolation
     WORKSPACE_DIR = os.getenv("WORKSPACE_DIR", "workspace")
 
+    # Scheduler
+    ENABLE_SCHEDULER = os.getenv("ENABLE_SCHEDULER", "true").lower() == "true"
+    SCHEDULE_INTERVAL_HOURS = float(os.getenv("SCHEDULE_INTERVAL_HOURS", "24"))
+    SCHEDULED_IDEA = os.getenv(
+        "SCHEDULED_IDEA",
+        "Build a small startup that solves a common daily problem using AI.",
+    )
+
     @classmethod
     def api_key_and_base_url(cls) -> tuple[str, str]:
         if cls.ZHIPU_API_KEY:

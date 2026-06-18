@@ -29,7 +29,8 @@ class StateStore:
                     status TEXT NOT NULL,
                     current_agent_id TEXT,
                     created_at TEXT,
-                    updated_at TEXT
+                    updated_at TEXT,
+                    completed_at TEXT
                 );
 
                 CREATE TABLE IF NOT EXISTS agent_runs (
@@ -51,18 +52,25 @@ class StateStore:
         now = datetime.now(timezone.utc).isoformat()
         with self._connection() as conn:
             conn.execute(
-                "INSERT INTO runs (id, idea, status, current_agent_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (run_id, idea, status, current_agent_id, now, now),
+                "INSERT INTO runs (id, idea, status, current_agent_id, created_at, updated_at, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (run_id, idea, status, current_agent_id, now, now, None),
             )
 
-    def update_run(self, run_id: str, status: str, current_agent_id: str) -> None:
+    def update_run(
+        self,
+        run_id: str,
+        status: str,
+        current_agent_id: str,
+        completed: bool = False,
+    ) -> None:
         from datetime import datetime, timezone
 
         now = datetime.now(timezone.utc).isoformat()
+        completed_at = now if completed else None
         with self._connection() as conn:
             conn.execute(
-                "UPDATE runs SET status = ?, current_agent_id = ?, updated_at = ? WHERE id = ?",
-                (status, current_agent_id, now, run_id),
+                "UPDATE runs SET status = ?, current_agent_id = ?, updated_at = ?, completed_at = COALESCE(?, completed_at) WHERE id = ?",
+                (status, current_agent_id, now, completed_at, run_id),
             )
 
     def get_run(self, run_id: str) -> dict[str, Any] | None:
