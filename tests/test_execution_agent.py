@@ -5,6 +5,7 @@ import pytest
 
 from src.agents.base import AgentContext
 from src.agents.execution import ExecutionAgent
+from src.config import Config
 
 
 def _run_shell(cmd: str, cwd: str) -> str:
@@ -38,6 +39,11 @@ async def test_execution_agent_creates_branch_and_commits(tmp_path, monkeypatch)
     repo.mkdir()
     bare_path = _init_git_repo(repo)
 
+    # Keep the run workspace inside the repo so it can be committed to the
+    # run branch, but outside the source/output paths used by other runs.
+    workspace_root = repo / "workspace"
+    monkeypatch.setattr(Config, "WORKSPACE_DIR", str(workspace_root))
+
     # Run from inside the temp repository so git_ops resolves the repo root.
     monkeypatch.chdir(str(repo))
 
@@ -58,6 +64,14 @@ async def test_execution_agent_creates_branch_and_commits(tmp_path, monkeypatch)
     content = summary_path.read_text()
     assert "run-exec" in content
     assert "A test startup idea" in content
+    assert str(workspace_root / "run-exec") in content
+
+    # A dedicated workspace directory was created for this run.
+    run_workspace = workspace_root / "run-exec"
+    assert run_workspace.exists()
+    workspace_readme = run_workspace / "README.md"
+    assert workspace_readme.exists()
+    assert "run-exec" in workspace_readme.read_text()
 
     # The milestone was pushed to the bare remote.
     remote_branches = _run_shell(
@@ -65,3 +79,10 @@ async def test_execution_agent_creates_branch_and_commits(tmp_path, monkeypatch)
         cwd=str(tmp_path),
     )
     assert "exec/run-exec" in remote_branches
+
+    # The workspace content is in the remote commit tree.
+    ls_tree = _run_shell(
+        f"git --git-dir={bare_path} ls-tree -r exec/run-exec --name-only",
+        cwd=str(tmp_path),
+    )
+    assert "workspace/run-exec/README.md" in ls_tree

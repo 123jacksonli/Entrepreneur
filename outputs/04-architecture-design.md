@@ -82,6 +82,7 @@ Entrepreneur/
 │   ├── orchestrator.py         # Pipeline state machine
 │   ├── state.py                # SQLite state store
 │   ├── artifacts.py            # Artifact read/write
+│   ├── execution_workspace.py  # Per-run workspace helper
 │   ├── tools/                  # External data and git tools
 │   │   ├── web_search.py
 │   │   ├── social_trends.py
@@ -155,7 +156,14 @@ class Orchestrator:
 - `MAX_IDEA_ITERATIONS` and `MAX_QA_ITERATIONS` prevent infinite loops.
 - Execution Agent creates a dedicated branch per run and never commits to `main`.
 
-### 5.7 Git Operations (`src/tools/git_ops.py`)
+### 5.7 Run Isolation (`src/execution_workspace.py`)
+
+- Each run gets a dedicated workspace directory: `workspace/{run_id}/`.
+- The Execution Agent writes code, config, and tests inside that folder.
+- Workspaces are committed to the run branch so runs are isolated both on disk
+  and in version control.
+
+### 5.8 Git Operations (`src/tools/git_ops.py`)
 
 - Creates a new branch per run: `exec/{run_id}` (configurable via `EXEC_BRANCH_PREFIX`).
 - Commits and pushes each milestone to the run branch.

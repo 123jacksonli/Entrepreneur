@@ -26,6 +26,9 @@ class Config:
     EXEC_BRANCH_PREFIX = os.getenv("EXEC_BRANCH_PREFIX", "exec")
     GITHUB_REPO = os.getenv("GITHUB_REPO")  # owner/repo format, e.g. "123jacksonli/Entrepreneur"
 
+    # Run isolation
+    WORKSPACE_DIR = os.getenv("WORKSPACE_DIR", "workspace")
+
     @classmethod
     def api_key_and_base_url(cls) -> tuple[str, str]:
         if cls.ZHIPU_API_KEY:

@@ -16,7 +16,8 @@ Turn the architecture design and approved scope into working software, committin
 4. Write configuration, environment setup, and basic documentation.
 5. Include tests alongside implementation code.
 6. Keep changes minimal and focused on the approved scope.
-7. **Use GitHub MCP for version control:** create a new branch per run, commit code after each milestone to that branch, and push changes so execution history is preserved. Do this autonomously without waiting for human confirmation on each commit.
+7. **Isolate each run:** write code into a dedicated workspace folder (`workspace/{run_id}/`) so multiple runs can be developed and tested without overwriting each other.
+8. **Use GitHub MCP for version control:** create a new branch per run, commit code after each milestone to that branch, and push changes so execution history is preserved. Do this autonomously without waiting for human confirmation on each commit.
 
 ## Inputs
 
@@ -61,8 +62,9 @@ Plus: the actual codebase in the repository.
 1. Read all approved artifacts.
 2. Check GitHub MCP authentication status. If unauthenticated, use git CLI fallback.
 3. Create a new branch named after the run (default: `exec/{run_id}`; configurable via `EXEC_BRANCH_PREFIX`).
-4. Implement milestone by milestone.
-5. **Commit and push after every completed milestone** to the run branch using GitHub MCP or git CLI fallback.
+4. Create a dedicated workspace folder for the run (`workspace/{run_id}/`).
+5. Implement milestone by milestone inside the run workspace.
+6. **Commit and push after every completed milestone** to the run branch using GitHub MCP or git CLI fallback.
 6. Run tests and fix obvious failures before finishing.
 7. Write the implementation summary artifact.
 8. Signal completion to the orchestrator.
@@ -73,6 +75,7 @@ Plus: the actual codebase in the repository.
 - Implemented features match the approved scope.
 - Tests exist and pass for core logic.
 - Code is readable and follows the architecture design.
+- **Every run writes code to its own workspace folder to avoid overlap.**
 - **Every milestone is committed to a dedicated run branch with a descriptive message.**
 - **No uncommitted code remains at the end of execution.**
 - **Execution never commits directly to `main`.**
