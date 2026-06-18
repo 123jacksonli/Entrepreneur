@@ -4,7 +4,9 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import AsyncGenerator, Callable
 
-from src.agents.base import AgentResult
+from src.agents import AGENTS
+from src.agents.base import AgentContext, AgentResult
+from src.artifacts import ArtifactManager, ARTIFACT_PATHS
 from src.config import Config
 from src.state import StateStore
 
@@ -25,10 +27,12 @@ class Orchestrator:
         state_store: StateStore | None = None,
         event_callback: Callable[[PipelineEvent], None] | None = None,
         config: Config | None = None,
+        artifact_manager: ArtifactManager | None = None,
     ) -> None:
         self.state = state_store or StateStore()
         self.event_callback = event_callback
         self.config = config or Config()
+        self.artifacts = artifact_manager or ArtifactManager()
 
     async def start_run(self, run_id: str, idea: str) -> None:
         """Start and drive a pipeline run autonomously."""
@@ -78,9 +82,36 @@ class Orchestrator:
             )
             return
 
-        # TODO: implement Execution Plan, Architecture, Execution, Test, QA.
+        # Run the remaining stages. Agents that are not yet implemented fall
+        # back to a placeholder completion.
+        await self._run_agent(run_id, "execution-plan", idea)
+        await self._run_agent(run_id, "architecture", idea)
+        await self._run_agent(run_id, "execution", idea)
+        await self._run_agent(run_id, "test", idea)
+
         # QA rejections loop back to Execution Agent up to MAX_QA_ITERATIONS.
-        self.state.update_run(run_id, "waiting", "execution-plan")
+        qa_iterations = 0
+        while qa_iterations < self.config.MAX_QA_ITERATIONS:
+            qa_iterations += 1
+            qa_result = await self._run_agent(run_id, "qa", idea)
+            # TODO: Parse the QA artifact to determine decision.
+            decision = "approve"
+            if decision == "approve":
+                break
+            await self._run_agent(run_id, "execution", idea)
+        else:
+            self.state.update_run(run_id, "failed", "qa")
+            await self._emit(
+                PipelineEvent(
+                    type="run-failed",
+                    run_id=run_id,
+                    agent_id="qa",
+                    payload={"reason": "max_qa_iterations_exceeded"},
+                )
+            )
+            return
+
+        self.state.update_run(run_id, "completed", "qa")
 
     async def _run_agent(self, run_id: str, agent_id: str, idea: str) -> AgentResult:
         from datetime import datetime, timezone
@@ -94,8 +125,22 @@ class Orchestrator:
             )
         )
 
-        # TODO: instantiate and run actual agent.
-        await asyncio.sleep(0.1)
+        # Load prior artifacts so the agent has full context.
+        context_artifacts = {
+            stage: self.artifacts.read(stage) for stage in ARTIFACT_PATHS
+        }
+        context = AgentContext(
+            run_id=run_id, idea=idea, artifacts=context_artifacts
+        )
+
+        agent_cls = AGENTS.get(agent_id)
+        if agent_cls:
+            agent = agent_cls()
+            result = await agent.run(context)
+        else:
+            # Placeholder for agents that are not yet implemented.
+            await asyncio.sleep(0.1)
+            result = AgentResult(status="completed")
 
         self.state.update_run(run_id, "running", agent_id)
         await self._emit(

@@ -22,6 +22,10 @@ class Config:
     MAX_TOKENS_PER_AGENT = int(os.getenv("MAX_TOKENS_PER_AGENT", "0")) or None
     STOP_ON_HIGH_COST = os.getenv("STOP_ON_HIGH_COST", "false").lower() == "true"
 
+    # Execution Agent version control
+    EXEC_BRANCH_PREFIX = os.getenv("EXEC_BRANCH_PREFIX", "exec")
+    GITHUB_REPO = os.getenv("GITHUB_REPO")  # owner/repo format, e.g. "123jacksonli/Entrepreneur"
+
     @classmethod
     def api_key_and_base_url(cls) -> tuple[str, str]:
         if cls.ZHIPU_API_KEY:

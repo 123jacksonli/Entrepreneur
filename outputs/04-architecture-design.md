@@ -82,9 +82,10 @@ Entrepreneur/
 │   ├── orchestrator.py         # Pipeline state machine
 │   ├── state.py                # SQLite state store
 │   ├── artifacts.py            # Artifact read/write
-│   ├── tools/                  # External data tools
+│   ├── tools/                  # External data and git tools
 │   │   ├── web_search.py
-│   │   └── social_trends.py
+│   │   ├── social_trends.py
+│   │   └── git_ops.py
 │   └── agents/                 # Agent implementations
 │       ├── __init__.py
 │       ├── base.py             # Base agent class
@@ -152,8 +153,16 @@ class Orchestrator:
 - Events are emitted via an in-memory queue consumed by the SSE endpoint.
 - The Plan Agent is the only approval gate; once approved, execution proceeds automatically.
 - `MAX_IDEA_ITERATIONS` and `MAX_QA_ITERATIONS` prevent infinite loops.
+- Execution Agent creates a dedicated branch per run and never commits to `main`.
 
-### 5.7 External Data Tools (`src/tools/`)
+### 5.7 Git Operations (`src/tools/git_ops.py`)
+
+- Creates a new branch per run: `exec/{run_id}` (configurable via `EXEC_BRANCH_PREFIX`).
+- Commits and pushes each milestone to the run branch.
+- Supports GitHub MCP and git CLI fallback.
+- After QA accepts, the branch can be merged into `main` (future enhancement).
+
+### 5.9 External Data Tools (`src/tools/`)
 
 - `web_search.py` — DuckDuckGo/SerpAPI search for news and web pages.
 - `social_trends.py` — X/Instagram/Threads trend search with API-key fallback to web search.

@@ -70,7 +70,7 @@ Entrepreneur/
 5. **Hand-off contract.** Each agent must write its output to a clearly named artifact and signal completion to the orchestrator.
 6. **Idea loop.** Idea Generation → Research → Plan form a loop. The Plan Agent approves, iterates, or stops. Only approved ideas proceed to Execution Plan. The orchestrator enforces `MAX_IDEA_ITERATIONS`.
 7. **QA loop.** If QA rejects the output, the orchestrator routes rework instructions back to the Execution Agent automatically, up to `MAX_QA_ITERATIONS`.
-8. **Execution Agent uses GitHub MCP.** The Execution Agent must create/select repositories, commit after each milestone, and push changes so all execution output is version-controlled.
+8. **Execution Agent uses GitHub MCP.** The Execution Agent must create a dedicated branch per run, commit after each milestone to that branch, and push changes so all execution output is version-controlled. Execution never commits directly to `main`.
 
 ## 5. Artifact Naming Convention
 
