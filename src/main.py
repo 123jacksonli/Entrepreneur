@@ -71,6 +71,15 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+@app.post("/ideas/generate")
+async def generate_idea() -> dict:
+    """Generate a SaaS idea using the latest web/social trend signals."""
+    from src.ideas import generate_idea as _generate_idea
+
+    idea = _generate_idea()
+    return {"idea": idea}
+
+
 @app.post("/runs")
 async def start_run(idea: str) -> dict:
     """Start a new pipeline run in the background."""

@@ -2,6 +2,15 @@ import { RunRecord } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+export async function generateIdea(): Promise<string> {
+  const res = await fetch(`${API_BASE}/ideas/generate`, { method: "POST" });
+  if (!res.ok) {
+    throw new Error(`Failed to generate idea: ${res.statusText}`);
+  }
+  const data = await res.json();
+  return data.idea;
+}
+
 export async function startRun(idea: string): Promise<RunRecord> {
   const res = await fetch(`${API_BASE}/runs?idea=${encodeURIComponent(idea)}`, {
     method: "POST",

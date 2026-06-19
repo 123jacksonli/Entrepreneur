@@ -67,14 +67,16 @@ class ResearchAgent(BaseAgent):
                 logger.warning("Research search failed for '%s': %s", query, exc)
                 search_results.append(f"(search unavailable for: {query})")
 
-        # Social media signals.
+        # Social media signals (via web search + scraping).
         try:
             social_client = SocialTrendClient()
-            social_posts = social_client.search_x(context.idea, max_results=5)
-            logs.append(self.log(f"Social search returned {len(social_posts)} posts"))
+            social_posts = social_client.search_all(context.idea, max_results=8)
+            logs.append(self.log(f"Social search returned {len(social_posts)} signals"))
             search_results.append("### Social trend signals")
             for p in social_posts:
-                search_results.append(f"- {p.author or 'unknown'}: {p.text[:280]}")
+                search_results.append(
+                    f"- {p.platform}: {p.text[:280]} (source: {p.url})"
+                )
         except Exception as exc:  # noqa: BLE001
             logger.warning("Social trend search failed: %s", exc)
 

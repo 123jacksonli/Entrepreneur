@@ -56,12 +56,12 @@ class IdeaGenerationAgent(BaseAgent):
         # 2. Social media trend signals.
         try:
             social_client = SocialTrendClient()
-            social_posts = social_client.search_x(context.idea, max_results=5)
-            logs.append(self.log(f"Social search returned {len(social_posts)} posts"))
+            social_posts = social_client.search_all(context.idea, max_results=8)
+            logs.append(self.log(f"Social search returned {len(social_posts)} signals"))
             search_context.append("## Social trend signals")
             for p in social_posts:
                 search_context.append(
-                    f"- {p.author or 'unknown'}: {p.text[:280]}"
+                    f"- {p.platform}: {p.text[:280]} (source: {p.url})"
                 )
         except Exception as exc:  # noqa: BLE001
             logger.warning("Social trend search failed: %s", exc)

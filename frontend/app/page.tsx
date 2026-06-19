@@ -9,7 +9,7 @@ import { IdeaLibraryTab } from "@/components/IdeaLibraryTab";
 import { IdeaDetailTab } from "@/components/IdeaDetailTab";
 import { useAppStore } from "@/lib/store";
 import { AGENTS } from "@/lib/agents";
-import { startRun, stopRun } from "@/lib/api";
+import { generateIdea, startRun, stopRun } from "@/lib/api";
 import { useRunEvents } from "@/lib/sse";
 import { AgentLogEntry, AgentStatus, PipelineEvent } from "@/types";
 
@@ -24,9 +24,8 @@ export default function Home() {
     setActiveRunId,
   } = useAppStore();
   const [isRunning, setIsRunning] = useState(false);
-  const [idea, setIdea] = useState(
-    "Build a small startup that solves a common daily problem using AI."
-  );
+  const [idea, setIdea] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(() => {
     if (agents.length === 0) {
@@ -70,6 +69,18 @@ export default function Home() {
 
   useRunEvents(activeRunId, handleEvent, handleComplete);
 
+  const handleGenerateIdea = async () => {
+    setIsGenerating(true);
+    try {
+      const generated = await generateIdea();
+      setIdea(generated);
+    } catch (error) {
+      console.error("Failed to generate idea:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleRun = async () => {
     resetAgents();
     setIsRunning(true);
@@ -106,8 +117,15 @@ export default function Home() {
             disabled={isRunning}
           />
           <button
+            onClick={handleGenerateIdea}
+            disabled={isGenerating || isRunning}
+            className="px-4 py-2 bg-purple-600 text-white rounded disabled:opacity-50"
+          >
+            {isGenerating ? "Generating..." : "Generate Idea"}
+          </button>
+          <button
             onClick={handleRun}
-            disabled={isRunning}
+            disabled={isRunning || !idea.trim()}
             className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
           >
             {isRunning ? "Running..." : "Run Pipeline"}

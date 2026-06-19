@@ -16,7 +16,18 @@ The Execution Agent expects these MCP server tools to be available:
 
 ## Authentication
 
-GitHub MCP requires a valid GitHub personal access token (PAT) with these scopes:
+GitHub MCP requires a valid **GitHub Personal Access Token (PAT)**.
+
+### What is a PAT?
+
+A PAT is a long string that acts like a password for programmatic GitHub access.
+You create one in your GitHub account and give it specific permissions (scopes).
+The Execution Agent uses it to create branches, commit files, and push code on
+your behalf.
+
+### Required scopes
+
+Create a classic token with at least:
 
 - `repo` — full repository access
 - `workflow` — if modifying GitHub Actions
