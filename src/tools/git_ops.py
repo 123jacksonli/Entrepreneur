@@ -177,11 +177,31 @@ def commit_all(
 
 
 def push_run_branch(run_id: str, repo_path: str | None = None) -> str:
-    """Push the run branch to origin and return the remote URL."""
+    """Push the run branch to origin and return the remote URL.
+
+    If ``GITHUB_PERSONAL_ACCESS_TOKEN`` is set and the origin remote is an
+    HTTPS GitHub URL, the token is embedded so the push can run without an
+    interactive credential prompt.
+    """
     cwd = repo_path or get_repo_root()
     branch_name = run_branch_name(run_id)
-    _run_git(["push", "-u", "origin", branch_name], cwd=cwd)
     remote_url = _run_git(["remote", "get-url", "origin"], cwd=cwd).stdout.strip()
+
+    token = os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN")
+    owner_repo = _parse_github_owner_repo(remote_url)
+    if token and owner_repo and remote_url.startswith("https://"):
+        auth_url = f"https://{token}@github.com/{owner_repo[0]}/{owner_repo[1]}.git"
+        _run_git(["push", auth_url, branch_name], cwd=cwd)
+        try:
+            _run_git(
+                ["branch", "--set-upstream-to", f"origin/{branch_name}", branch_name],
+                cwd=cwd,
+            )
+        except GitOperationError:
+            pass
+    else:
+        _run_git(["push", "-u", "origin", branch_name], cwd=cwd)
+
     logger.info("Pushed %s to origin", branch_name)
     return remote_url
 
