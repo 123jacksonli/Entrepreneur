@@ -47,7 +47,7 @@ def _fake_search_web(query: str, max_results: int = 5):
     ]
 
 
-def _fake_search_x(self, query: str, max_results: int = 5):
+def _fake_search_all(self, query: str, max_results: int = 5):
     return []
 
 
@@ -79,7 +79,7 @@ async def test_orchestrator_runs_full_pipeline(tmp_path, monkeypatch):
     monkeypatch.setattr("src.llm_factory.API_KEY", None)
     for module in ("idea_generation", "research", "plan"):
         monkeypatch.setattr(f"src.agents.{module}.search_web", _fake_search_web)
-    monkeypatch.setattr(SocialTrendClient, "search_x", _fake_search_x)
+    monkeypatch.setattr(SocialTrendClient, "search_all", _fake_search_all)
     monkeypatch.setattr(TestAgent, "_run_pytest", _fake_run_pytest)
 
     state = StateStore(db_path=str(db_path))
@@ -102,13 +102,18 @@ async def test_orchestrator_runs_full_pipeline(tmp_path, monkeypatch):
     # All artifact files were produced.
     for stage in [
         "00-idea-brief.md",
+        "00-idea-brief-thinking.md",
         "01-research-report.md",
+        "01-research-report-thinking.md",
         "02-plan-report.md",
+        "02-plan-report-thinking.md",
         "03-execution-plan.md",
         "04-architecture-design.md",
+        "04-architecture-design-thinking.md",
         "05-implementation-summary.md",
         "06-test-report.md",
         "07-qa-report.md",
+        "07-qa-report-thinking.md",
     ]:
         assert (outputs_dir / stage).exists(), f"missing {stage}"
 

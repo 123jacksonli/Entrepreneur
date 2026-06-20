@@ -7,7 +7,7 @@ a data-driven idea brief.
 import logging
 from dataclasses import dataclass, field
 
-from src.agents._utils import call_llm
+from src.agents._utils import call_llm, parse_thinking_output
 from src.agents.base import BaseAgent, AgentContext, AgentResult
 from src.artifacts import ArtifactManager
 from src.tools.social_trends import SocialTrendClient
@@ -72,24 +72,33 @@ class IdeaGenerationAgent(BaseAgent):
 Latest signals:
 {chr(10).join(search_context)}
 
-Write a concise, data-driven startup idea brief using the sections below.
-Cite the most important source(s) that influenced each insight."""
+First, write a concise thinking section that explains how you selected and
+synthesized the idea. Then write the final structured startup idea brief."""
 
         system_prompt = (
             "You are the Idea Generation Agent. Reframe the user's prompt into a "
-            "structured startup idea brief with these sections:\n"
-            "1. Idea Title\n"
-            "2. Problem Statement\n"
-            "3. Proposed Solution\n"
-            "4. Target Customer\n"
-            "5. Value Proposition\n"
-            "6. Key Signals & Sources — summarize the web/social data used and cite URLs\n"
-            "7. Assumptions to Validate\n"
-            "8. Constraints\n\n"
+            "structured startup idea brief. Respond in two sections:\n"
+            "1. ## Thinking — your reasoning, assumptions, and why this idea is promising.\n"
+            "2. ## Output — the final idea brief with these sub-sections:\n"
+            "   - Idea Title\n"
+            "   - Problem Statement\n"
+            "   - Proposed Solution\n"
+            "   - Target Customer\n"
+            "   - Value Proposition\n"
+            "   - Key Signals & Sources\n"
+            "   - Assumptions to Validate\n"
+            "   - Constraints\n\n"
             "Use the latest data. Do not write code or architecture."
         )
 
-        fallback = f"""# Idea Brief
+        fallback = f"""## Thinking
+
+No external data was available, so this fallback uses the original prompt as the
+idea seed and fills a generic but complete brief.
+
+## Output
+
+# Idea Brief
 
 ## Idea Title
 {context.idea}
@@ -117,13 +126,18 @@ A simpler, more efficient way to address the problem than existing alternatives.
 - Autonomous agent pipeline with limited iteration budget.
 """
 
-        content = call_llm(self.id, system_prompt, user_prompt, fallback)
-        artifact_path = self.artifact_manager.write("idea-generation", content)
+        full_response = call_llm(self.id, system_prompt, user_prompt, fallback)
+        thinking, output = parse_thinking_output(full_response)
+
+        thinking_path = self.artifact_manager.write("idea-generation-thinking", thinking)
+        logs.append(self.log(f"Wrote idea thinking to {thinking_path}"))
+
+        artifact_path = self.artifact_manager.write("idea-generation", output)
         logs.append(self.log(f"Wrote idea brief to {artifact_path}"))
 
         return AgentResult(
             status="completed",
-            outputs=[artifact_path],
+            outputs=[thinking_path, artifact_path],
             logs=logs,
-            artifact_text=content,
+            artifact_text=output,
         )

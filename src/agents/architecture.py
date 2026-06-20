@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass, field
 
-from src.agents._utils import call_llm
+from src.agents._utils import call_llm, parse_thinking_output
 from src.agents.base import BaseAgent, AgentContext, AgentResult
 from src.artifacts import ArtifactManager
 
@@ -27,24 +27,36 @@ class ArchitectureAgent(BaseAgent):
 Execution plan:
 {execution_plan}
 
-Design a buildable architecture for the MVP."""
+First, write a thinking section that explains your architectural trade-offs and
+why you selected the proposed stack. Then design the buildable architecture for
+the MVP."""
 
         system_prompt = (
-            "You are the Architecture Agent. Design the technical blueprint with "
-            "these sections:\n"
-            "1. Overview\n"
-            "2. Tech Stack\n"
-            "3. System Components\n"
-            "4. Data Model\n"
-            "5. API Contracts\n"
-            "6. Integration Points\n"
-            "7. Deployment & Infrastructure\n"
-            "8. Non-Functional Requirements\n"
-            "9. Open Questions for Human Review\n\n"
+            "You are the Architecture Agent. Design the technical blueprint. "
+            "Respond in two sections:\n"
+            "1. ## Thinking — your architectural reasoning, trade-offs, and why the "
+            "chosen stack fits the MVP constraints.\n"
+            "2. ## Output — the final architecture design with these sub-sections:\n"
+            "   - Overview\n"
+            "   - Tech Stack\n"
+            "   - System Components\n"
+            "   - Data Model\n"
+            "   - API Contracts\n"
+            "   - Integration Points\n"
+            "   - Deployment & Infrastructure\n"
+            "   - Non-Functional Requirements\n"
+            "   - Open Questions for Human Review\n\n"
             "Do not write production code or implementation details."
         )
 
-        fallback = f"""# Architecture Design
+        fallback = f"""## Thinking
+
+Offline fallback: a simple, proven stack is chosen to minimize risk and speed up
+MVP delivery.
+
+## Output
+
+# Architecture Design
 
 ## Overview
 A lightweight multi-agent web application with a FastAPI backend and a Next.js frontend.
@@ -89,13 +101,18 @@ A lightweight multi-agent web application with a FastAPI backend and a Next.js f
 - Hosting provider and CI/CD pipeline details.
 """
 
-        content = call_llm(self.id, system_prompt, user_prompt, fallback)
-        artifact_path = self.artifact_manager.write("architecture", content)
+        full_response = call_llm(self.id, system_prompt, user_prompt, fallback)
+        thinking, output = parse_thinking_output(full_response)
+
+        thinking_path = self.artifact_manager.write("architecture-thinking", thinking)
+        logs.append(self.log(f"Wrote architecture thinking to {thinking_path}"))
+
+        artifact_path = self.artifact_manager.write("architecture", output)
         logs.append(self.log(f"Wrote architecture design to {artifact_path}"))
 
         return AgentResult(
             status="completed",
-            outputs=[artifact_path],
+            outputs=[thinking_path, artifact_path],
             logs=logs,
-            artifact_text=content,
+            artifact_text=output,
         )

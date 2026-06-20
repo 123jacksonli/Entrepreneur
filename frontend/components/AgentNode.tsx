@@ -12,10 +12,20 @@ interface AgentNodeProps {
 export function AgentNode({ data }: AgentNodeProps) {
   const selectAgent = useAppStore((s) => s.selectAgent);
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      selectAgent(data.id);
+    }
+  };
+
   return (
-    <div
-      className="min-w-[180px] rounded-lg border bg-white p-3 shadow-sm cursor-pointer hover:shadow-md transition"
+    <button
+      type="button"
+      className="min-w-[180px] rounded-lg border bg-white p-3 shadow-sm cursor-pointer hover:shadow-md transition text-left"
       onClick={() => selectAgent(data.id)}
+      onKeyDown={handleKeyDown}
+      aria-label={`Select ${data.name}, status ${data.status}`}
     >
       <Handle type="target" position={Position.Top} />
       <div className="flex items-center justify-between gap-2">
@@ -24,6 +34,6 @@ export function AgentNode({ data }: AgentNodeProps) {
       </div>
       <p className="text-xs text-gray-500 mt-1 line-clamp-2">{data.description}</p>
       <Handle type="source" position={Position.Bottom} />
-    </div>
+    </button>
   );
 }

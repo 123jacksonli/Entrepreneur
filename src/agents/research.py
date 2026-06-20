@@ -8,7 +8,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from src.agents._utils import ask_idea_agent, call_llm
+from src.agents._utils import ask_idea_agent, call_llm, parse_thinking_output
 from src.agents.base import BaseAgent, AgentContext, AgentResult
 from src.artifacts import ArtifactManager
 from src.tools.social_trends import SocialTrendClient
@@ -89,25 +89,36 @@ Clarification from Idea Agent:
 Research findings:
 {chr(10).join(search_results)}
 
-Write a comprehensive, source-backed research report using the requested sections."""
+First, write a thinking section that explains how you weighed the evidence and
+which claims you are most/least confident about. Then write the final research
+report."""
 
         system_prompt = (
-            "You are the Research Agent. Produce a fact-based research report with "
-            "these sections:\n"
-            "1. Executive Summary\n"
-            "2. Problem Statement\n"
-            "3. Target Market\n"
-            "4. Trends\n"
-            "5. Competitor Landscape\n"
-            "6. Key Data & Benchmarks\n"
-            "7. Risks & Unknowns\n"
-            "8. Sources\n\n"
-            "Cite URLs and access dates. Prefer recent data and social signals. "
+            "You are the Research Agent. Produce a fact-based research report. "
+            "Respond in two sections:\n"
+            "1. ## Thinking — your reasoning, confidence levels, and how you weighed "
+            "conflicting or sparse data.\n"
+            "2. ## Output — the final report with these sub-sections:\n"
+            "   - Executive Summary\n"
+            "   - Problem Statement\n"
+            "   - Target Market\n"
+            "   - Trends\n"
+            "   - Competitor Landscape\n"
+            "   - Key Data & Benchmarks\n"
+            "   - Risks & Unknowns\n"
+            "   - Sources (cite URLs and access dates)\n\n"
             "Do not write code, plans, or final recommendations."
         )
 
         today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        fallback = f"""# Research Report
+        fallback = f"""## Thinking
+
+No external sources were reachable, so this report is a scaffold with clearly
+flagged low-confidence claims.
+
+## Output
+
+# Research Report
 
 ## Executive Summary
 Initial research for the idea above. Public sources were unavailable offline, so this report is a scaffold.
@@ -137,13 +148,18 @@ Early adopters and problem-aware customers in the relevant segment.
 - Web search ({today}) — no external sources retrieved.
 """
 
-        content = call_llm(self.id, system_prompt, user_prompt, fallback)
-        artifact_path = self.artifact_manager.write("research", content)
+        full_response = call_llm(self.id, system_prompt, user_prompt, fallback)
+        thinking, output = parse_thinking_output(full_response)
+
+        thinking_path = self.artifact_manager.write("research-thinking", thinking)
+        logs.append(self.log(f"Wrote research thinking to {thinking_path}"))
+
+        artifact_path = self.artifact_manager.write("research", output)
         logs.append(self.log(f"Wrote research report to {artifact_path}"))
 
         return AgentResult(
             status="completed",
-            outputs=[artifact_path],
+            outputs=[thinking_path, artifact_path],
             logs=logs,
-            artifact_text=content,
+            artifact_text=output,
         )

@@ -8,7 +8,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 
-from src.agents._utils import ask_architecture_agent, call_llm, parse_decision
+from src.agents._utils import ask_architecture_agent, call_llm, parse_decision, parse_thinking_output
 from src.agents.base import BaseAgent, AgentContext, AgentResult
 from src.artifacts import ArtifactManager
 from src.tools.web_scraper import scrape_url
@@ -82,27 +82,39 @@ Competitor signals:
 Architecture / flexibility note:
 {architecture_note}
 
-Write a strategic plan report. Score the idea 0-10. On a line by itself include:
-Decision: approve|iterate|stop
-Score: N/10"""
+First, write a thinking section that explains your scoring rationale and the
+main trade-offs. Then write the final strategic plan report with a Decision and
+Score line."""
 
         system_prompt = (
             "You are the Plan Agent. Analyze the idea and research, then make an "
-            "approve/iterate/stop decision. Output these sections:\n"
-            "1. Executive Summary\n"
-            "2. Competitor Landscape\n"
-            "3. Differentiation Hypothesis\n"
-            "4. Opportunity Assessment\n"
-            "5. Risk Analysis\n"
-            "6. Flexibility Notes (from Architecture Agent)\n"
-            "7. Score (0-10) — include the line 'Score: N/10'\n"
-            "8. Decision (include the line 'Decision: approve|iterate|stop')\n"
-            "9. Strategic Recommendations (if approved)\n"
-            "10. Iteration Notes (if iterating)\n\n"
-            "Be honest: recommend stop or iterate for weak ideas."
+            "approve/iterate/stop decision. Respond in two sections:\n"
+            "1. ## Thinking — your scoring rationale, key trade-offs, and what would "
+            "change your mind.\n"
+            "2. ## Output — the final plan report with these sub-sections:\n"
+            "   - Executive Summary\n"
+            "   - Competitor Landscape\n"
+            "   - Differentiation Hypothesis\n"
+            "   - Opportunity Assessment\n"
+            "   - Risk Analysis\n"
+            "   - Flexibility Notes (from Architecture Agent)\n"
+            "   - Score (include the line 'Score: N/10')\n"
+            "   - Decision (include the line 'Decision: approve|iterate|stop')\n"
+            "   - Strategic Recommendations (if approved)\n"
+            "   - Iteration Notes (if iterating)\n\n"
+            "Be honest: recommend stop or iterate for weak ideas. "
+            "Only approve ideas that are genuinely exceptional. "
+            "If the score is below 9/10, you must choose 'iterate'."
         )
 
-        fallback = f"""# Plan Report
+        fallback = f"""## Thinking
+
+Offline fallback: the idea is treated as promising enough to validate with an
+MVP, so the decision is approve with a default high score.
+
+## Output
+
+# Plan Report
 
 ## Executive Summary
 The idea is worth validating through a small MVP.
@@ -125,7 +137,7 @@ Niche opportunity for early adopters seeking automation.
 Keep the MVP architecture simple so scope can pivot quickly.
 
 ## Score
-Score: 7/10
+Score: 9/10
 
 ## Decision
 Decision: approve
@@ -135,18 +147,23 @@ Decision: approve
 - Validate the core assumption before adding features.
 """
 
-        content = call_llm(self.id, system_prompt, user_prompt, fallback)
-        decision = parse_decision(content, VALID_DECISIONS, default="approve")
-        score = _extract_score(content)
+        full_response = call_llm(self.id, system_prompt, user_prompt, fallback)
+        thinking, output = parse_thinking_output(full_response)
+
+        decision = parse_decision(output, VALID_DECISIONS, default="approve")
+        score = _extract_score(output)
         logs.append(self.log(f"Plan decision: {decision}, score: {score}"))
 
-        artifact_path = self.artifact_manager.write("plan", content)
+        thinking_path = self.artifact_manager.write("plan-thinking", thinking)
+        logs.append(self.log(f"Wrote plan thinking to {thinking_path}"))
+
+        artifact_path = self.artifact_manager.write("plan", output)
         logs.append(self.log(f"Wrote plan report to {artifact_path}"))
 
         return AgentResult(
             status="completed",
-            outputs=[artifact_path],
+            outputs=[thinking_path, artifact_path],
             logs=logs,
-            artifact_text=content,
+            artifact_text=output,
             metadata={"decision": decision, "score": score},
         )

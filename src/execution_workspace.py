@@ -30,3 +30,19 @@ def write_workspace_file(run_id: str, relative_path: str, content: str) -> Path:
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text(content, encoding="utf-8")
     return file_path
+
+
+def read_workspace_file(run_id: str, relative_path: str) -> str:
+    """Read ``relative_path`` from the run workspace as text."""
+    file_path = get_workspace_path(run_id) / relative_path
+    return file_path.read_text(encoding="utf-8")
+
+
+def list_workspace_files(run_id: str) -> list[str]:
+    """Return all file paths inside the run workspace, relative to the workspace root."""
+    workspace = prepare_workspace(run_id)
+    files: list[str] = []
+    for path in workspace.rglob("*"):
+        if path.is_file():
+            files.append(str(path.relative_to(workspace)))
+    return sorted(files)

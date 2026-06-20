@@ -5,9 +5,9 @@ import { RunRecord } from "@/types";
 
 const mockRun: RunRecord = {
   id: "run-1",
-  startedAt: new Date().toISOString(),
+  idea: "Test idea",
   status: "completed",
-  agents: [],
+  created_at: new Date().toISOString(),
 };
 
 jest.mock("swr", () => ({

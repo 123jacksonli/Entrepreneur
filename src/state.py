@@ -43,6 +43,9 @@ class StateStore:
                     started_at TEXT,
                     completed_at TEXT
                 );
+
+                CREATE INDEX IF NOT EXISTS idx_agent_runs_run_id
+                    ON agent_runs(run_id);
                 """
             )
 
@@ -66,12 +69,17 @@ class StateStore:
         from datetime import datetime, timezone
 
         now = datetime.now(timezone.utc).isoformat()
-        completed_at = now if completed else None
         with self._connection() as conn:
-            conn.execute(
-                "UPDATE runs SET status = ?, current_agent_id = ?, updated_at = ?, completed_at = COALESCE(?, completed_at) WHERE id = ?",
-                (status, current_agent_id, now, completed_at, run_id),
-            )
+            if completed:
+                conn.execute(
+                    "UPDATE runs SET status = ?, current_agent_id = ?, updated_at = ?, completed_at = ? WHERE id = ?",
+                    (status, current_agent_id, now, now, run_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE runs SET status = ?, current_agent_id = ?, updated_at = ?, completed_at = NULL WHERE id = ?",
+                    (status, current_agent_id, now, run_id),
+                )
 
     def get_run(self, run_id: str) -> dict[str, Any] | None:
         with self._connection() as conn:
@@ -116,3 +124,12 @@ class StateStore:
                 "UPDATE agent_runs SET status = ?, outputs = ?, logs = ?, completed_at = ? WHERE id = ?",
                 (status, json.dumps(outputs), json.dumps(logs), now, agent_run_id),
             )
+
+    def list_agent_runs(self, run_id: str) -> list[dict[str, Any]]:
+        """Return all agent runs for a pipeline run, oldest first."""
+        with self._connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM agent_runs WHERE run_id = ? ORDER BY started_at ASC",
+                (run_id,),
+            ).fetchall()
+            return [dict(row) for row in rows]
