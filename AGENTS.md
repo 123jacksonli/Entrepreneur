@@ -57,7 +57,9 @@ Entrepreneur/
 │   ├── architecture/AGENT.md              # Architecture Agent spec
 │   ├── execution/AGENT.md                 # Execution Agent spec
 │   ├── test/AGENT.md                      # Test Agent spec
-│   └── qa/AGENT.md                        # QA Agent spec
+│   ├── qa/AGENT.md                        # QA Agent spec
+│   ├── supabase-design/AGENT.md           # Supabase schema design (optional)
+│   └── social-media/AGENT.md              # Social media plan & posting (optional)
 └── .git/
 ```
 
@@ -71,6 +73,7 @@ Entrepreneur/
 6. **Idea loop.** Idea Generation → Research → Plan form a loop. The Plan Agent approves, iterates, or stops. Only approved ideas proceed to Execution Plan. The orchestrator enforces `MAX_IDEA_ITERATIONS`.
 7. **QA loop.** If QA rejects the output, the orchestrator routes rework instructions back to the Execution Agent automatically, up to `MAX_QA_ITERATIONS`.
 8. **Execution Agent uses GitHub MCP.** The Execution Agent must create a dedicated branch per run, write implementation code into a dedicated workspace folder (`workspace/{run_id}/`) to avoid overlap, commit after each milestone to that branch, and push changes so all execution output is version-controlled. Execution never commits directly to `main`.\n9. **Artifacts are isolated per run.** Each run writes its markdown artifacts to `outputs/{run_id}/` so approved and disapproved ideas can be reviewed later.
+10. **Support agents.** Optional agents (Supabase Design, Social Media Manager) can be invoked after the core pipeline to produce database designs and launch content.
 
 ## 5. Artifact Naming Convention
 
@@ -84,6 +87,8 @@ Entrepreneur/
 | Execution | `outputs/05-implementation-summary.md` |
 | Test | `outputs/06-test-report.md` |
 | QA | `outputs/07-qa-report.md` |
+| Supabase Design | `outputs/08-supabase-design.md` |
+| Social Media Manager | `outputs/09-social-media-plan.md` |
 
 ## 6. Autonomous Safeguards
 

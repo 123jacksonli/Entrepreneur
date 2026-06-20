@@ -18,6 +18,8 @@ ARTIFACT_PATHS = {
     "execution": "outputs/05-implementation-summary.md",
     "test": "outputs/06-test-report.md",
     "qa": "outputs/07-qa-report.md",
+    "supabase-design": "outputs/08-supabase-design.md",
+    "social-media": "outputs/09-social-media-plan.md",
 }
 
 

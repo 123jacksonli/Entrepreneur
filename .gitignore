@@ -12,6 +12,10 @@ node_modules/
 dist/
 build/
 
+# Agent-generated per-run artifacts and workspaces
+outputs/
+workspace/
+
 # Logs
 *.log
 
