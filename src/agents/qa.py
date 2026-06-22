@@ -48,7 +48,16 @@ evidence for each. Then render the final QA report and verdict."""
             "   - Issues Found\n"
             "   - Verdict (include the line 'Verdict: accept|conditional accept|reject')\n"
             "   - Rework Instructions (if rejecting)\n\n"
-            "Be constructively critical. Do not approve work that does not meet requirements."
+            "Guidance:\n"
+            "- Approve (or conditional-accept) if the test suite passes and the "
+            "implementation satisfies the execution plan and architecture.\n"
+            "- Do not reject solely because you would like more tests, more documentation, "
+            "real-world validation data, or cosmetic polish unless the execution plan "
+            "explicitly requires it.\n"
+            "- Reject only when there is a concrete, fixable defect: failing tests, "
+            "missing required functionality, broken CLI contract, or security/correctness "
+            "bugs that the Execution Agent can actually address.\n"
+            "- Rework instructions must be specific, minimal, and actionable."
         )
 
         fallback = f"""## Thinking

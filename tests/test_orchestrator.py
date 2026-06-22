@@ -51,7 +51,7 @@ def _fake_search_all(self, query: str, max_results: int = 5):
     return []
 
 
-def _fake_run_pytest(self) -> str:
+def _fake_run_project_tests(self, run_id: str) -> str:
     return "1 passed in 0.01s"
 
 
@@ -80,7 +80,7 @@ async def test_orchestrator_runs_full_pipeline(tmp_path, monkeypatch):
     for module in ("idea_generation", "research", "plan"):
         monkeypatch.setattr(f"src.agents.{module}.search_web", _fake_search_web)
     monkeypatch.setattr(SocialTrendClient, "search_all", _fake_search_all)
-    monkeypatch.setattr(TestAgent, "_run_pytest", _fake_run_pytest)
+    monkeypatch.setattr(TestAgent, "_run_project_tests", _fake_run_project_tests)
 
     state = StateStore(db_path=str(db_path))
     artifacts = ArtifactManager(outputs_dir=str(outputs_dir))
@@ -117,9 +117,9 @@ async def test_orchestrator_runs_full_pipeline(tmp_path, monkeypatch):
     ]:
         assert (outputs_dir / stage).exists(), f"missing {stage}"
 
-    # The execution branch and workspace were created.
+    # The execution branch was created in a worktree; main repo stays on main.
     current_branch = _run_shell("git rev-parse --abbrev-ref HEAD", cwd=str(repo))
-    assert current_branch == "exec/run-orch"
+    assert current_branch == "main"
     assert (workspace_dir / "run-orch" / "README.md").exists()
 
     # Key pipeline events were emitted.

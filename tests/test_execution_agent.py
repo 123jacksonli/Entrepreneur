@@ -7,6 +7,7 @@ from src.agents.base import AgentContext
 from src.agents.execution import ExecutionAgent
 from src.artifacts import ArtifactManager
 from src.config import Config
+from src.tools import git_ops
 
 
 def _run_shell(cmd: str, cwd: str) -> str:
@@ -55,11 +56,18 @@ async def test_execution_agent_creates_branch_and_commits(tmp_path, monkeypatch)
     assert result.status == "completed"
     assert any("05-implementation-summary.md" in o for o in result.outputs)
 
-    # Branch was created and checked out.
+    # Main repo stays on main; the run branch lives in a worktree.
     current_branch = _run_shell("git rev-parse --abbrev-ref HEAD", cwd=str(repo))
-    assert current_branch == "exec/run-exec"
+    assert current_branch == "main"
 
-    # The implementation summary file exists and is tracked.
+    branch_name = git_ops.run_branch_name("run-exec")
+    remote_branches = _run_shell(
+        f"git --git-dir={bare_path} for-each-ref --format='%(refname:short)' refs/heads/",
+        cwd=str(tmp_path),
+    )
+    assert branch_name in remote_branches
+
+    # The implementation summary file exists and is tracked in the main repo outputs.
     summary_path = repo / "outputs" / "run-exec" / "05-implementation-summary.md"
     assert summary_path.exists()
     content = summary_path.read_text()
@@ -74,17 +82,15 @@ async def test_execution_agent_creates_branch_and_commits(tmp_path, monkeypatch)
     assert workspace_readme.exists()
     assert "run-exec" in workspace_readme.read_text()
 
-    # The milestone was pushed to the bare remote.
-    remote_branches = _run_shell(
-        f"git --git-dir={bare_path} for-each-ref --format='%(refname:short)' refs/heads/",
-        cwd=str(tmp_path),
-    )
-    assert "exec/run-exec" in remote_branches
-
-    # The workspace content is in the remote commit tree.
+    # The run branch contains only the generated startup files at root,
+    # not the parent project or workspace/ subfolder.
     ls_tree = _run_shell(
-        f"git --git-dir={bare_path} ls-tree -r exec/run-exec --name-only",
+        f"git --git-dir={bare_path} ls-tree -r {branch_name} --name-only",
         cwd=str(tmp_path),
     )
-    assert "workspace/run-exec/README.md" in ls_tree
-    assert "outputs/run-exec/05-implementation-summary.md" in ls_tree
+    assert "README.md" in ls_tree
+    assert any(ext in ls_tree for ext in (".py", ".ts", ".js", ".json"))
+    assert "workspace/" not in ls_tree
+    assert "outputs/" not in ls_tree
+    # The parent repo's README should not be on the run branch.
+    assert "# test repo" not in ls_tree

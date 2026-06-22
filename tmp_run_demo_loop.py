@@ -6,14 +6,18 @@ from pathlib import Path
 
 from src.agents.architecture import ArchitectureAgent
 from src.agents.base import AgentContext
+from src.agents.execution import ExecutionAgent
 from src.agents.execution_plan import ExecutionPlanAgent
 from src.agents.idea_generation import IdeaGenerationAgent
 from src.agents.plan import PlanAgent
+from src.agents.qa import QAAgent
 from src.agents.research import ResearchAgent
+from src.agents.test import TestAgent
 from src.artifacts import ArtifactManager
 from src.config import Config
 from src.ideas import generate_idea
 from src.llm_factory import create_completion
+from src.tools import git_ops
 
 
 def print_section(title: str, content: str) -> None:
@@ -42,8 +46,22 @@ src.agents._utils.create_completion = _timed_create_completion
 ideas_module.create_completion = _timed_create_completion
 
 
+# Demo safety: commit locally but do not push demo branches to the remote repo.
+_orig_push_run_branch = git_ops.push_run_branch
+
+
+def _no_push_run_branch(run_id, repo_path=None):
+    logger = __import__("logging").getLogger(__name__)
+    logger.info("Demo mode: skipping remote push for %s", run_id)
+    return ""
+
+
+git_ops.push_run_branch = _no_push_run_branch
+
+
 THRESHOLD = 8  # approve ideas scoring >= this
 MAX_ITERATIONS = 5
+MAX_QA_ITERATIONS = 3
 
 
 def _extract_score(text: str) -> int | None:
@@ -54,6 +72,11 @@ def _extract_score(text: str) -> int | None:
         except ValueError:
             return None
     return None
+
+
+def _extract_verdict(text: str) -> str | None:
+    m = re.search(r"Verdict:\s*(accept|conditional accept|reject)", text, re.IGNORECASE)
+    return m.group(1).lower() if m else None
 
 
 async def run_iteration(iteration: int) -> dict | None:
@@ -139,9 +162,10 @@ async def main() -> None:
 
     # Run execution plan and architecture on approved/best idea.
     Config.OUTPUTS_DIR = approved["outputs_dir"]
-    am = ArtifactManager(run_id=f"demo-run-iter-{approved['iteration']}")
+    run_id = f"demo-run-iter-{approved['iteration']}"
+    am = ArtifactManager(run_id=run_id)
     ctx = AgentContext(
-        run_id=f"demo-run-iter-{approved['iteration']}",
+        run_id=run_id,
         idea=approved["idea"],
         artifacts={
             "idea-generation": approved["idea_brief"],
@@ -164,6 +188,58 @@ async def main() -> None:
             print(f"[ERROR] {name} failed: {exc}")
             traceback.print_exc()
 
+    # QA loop: Execution → Test → QA, up to MAX_QA_ITERATIONS.
+    qa_iteration = 0
+    qa_verdict = "reject"
+    while qa_iteration < MAX_QA_ITERATIONS:
+        qa_iteration += 1
+        print(f"\n>>> QA LOOP ITERATION {qa_iteration}", flush=True)
+
+        print("\n>>> Running Execution Agent...", flush=True)
+        exec_agent = ExecutionAgent(artifact_manager=am)
+        try:
+            exec_result = await exec_agent.run(ctx)
+            ctx.artifacts["execution"] = exec_result.artifact_text
+            print_section("EXECUTION OUTPUT", exec_result.artifact_text)
+        except Exception as exc:
+            print(f"[ERROR] Execution Agent failed: {exc}")
+            traceback.print_exc()
+            break
+
+        print("\n>>> Running Test Agent...", flush=True)
+        test_agent = TestAgent(artifact_manager=am)
+        try:
+            test_result = await test_agent.run(ctx)
+            ctx.artifacts["test"] = test_result.artifact_text
+            print_section("TEST OUTPUT", test_result.artifact_text)
+        except Exception as exc:
+            print(f"[ERROR] Test Agent failed: {exc}")
+            traceback.print_exc()
+            break
+
+        print("\n>>> Running QA Agent...", flush=True)
+        qa_agent = QAAgent(artifact_manager=am)
+        try:
+            qa_result = await qa_agent.run(ctx)
+            ctx.artifacts["qa"] = qa_result.artifact_text
+            qa_verdict = qa_result.metadata.get("verdict") if qa_result.metadata else None
+            if qa_verdict is None:
+                qa_verdict = _extract_verdict(qa_result.artifact_text)
+            print(f"[QA RESULT] verdict={qa_verdict}")
+            print_section("QA OUTPUT", qa_result.artifact_text)
+        except Exception as exc:
+            print(f"[ERROR] QA Agent failed: {exc}")
+            traceback.print_exc()
+            break
+
+        if qa_verdict in ("accept", "conditional accept"):
+            print(f"\n[QA ACCEPTED] after {qa_iteration} iteration(s).")
+            break
+
+        print(f"\n[QA REJECTED] Sending rework instructions back to Execution Agent.")
+    else:
+        print(f"\n[QA LOOP EXHAUSTED] Max {MAX_QA_ITERATIONS} rework iterations reached.")
+
     print(f"\n{'=' * 78}")
     print("ELIMINATED IDEAS:")
     for e in eliminated:
@@ -175,7 +251,8 @@ async def main() -> None:
     title = approved['idea_brief'].split('\n')[0] if approved['idea_brief'] else approved['idea'][:80]
     print(f"    {title}")
     print(f"\nArtifacts saved under: outputs/demo-run/")
-    print("Execution Agent was NOT run.")
+    print(f"Workspace saved under: workspace/{run_id}/")
+    print(f"Git branch: exec/{run_id} (committed locally; demo mode skipped remote push)")
     print("=" * 78)
 
 

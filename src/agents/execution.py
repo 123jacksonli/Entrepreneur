@@ -3,6 +3,9 @@
 The Execution Agent is the only agent allowed to modify implementation files.
 It creates a dedicated branch for every pipeline run **and** a dedicated
 workspace folder so multiple runs can be developed and tested in isolation.
+
+Each run branch is an orphan branch containing only the generated startup code;
+the parent Entrepreneur project is not included.
 """
 
 import logging
@@ -13,6 +16,8 @@ from src.agents._utils import call_llm
 from src.agents.base import BaseAgent, AgentContext, AgentResult
 from src.artifacts import ArtifactManager
 from src.execution_workspace import (
+    copy_workspace_to_worktree,
+    list_worktree_files,
     list_workspace_files,
     prepare_workspace,
     write_workspace_file,
@@ -32,21 +37,21 @@ class ExecutionAgent(BaseAgent):
         """Execute the implementation phase for a run.
 
         Steps:
-        1. Create a dedicated branch for the run.
+        1. Create a dedicated orphan branch for the run via a git worktree.
         2. Create a dedicated workspace folder for the run.
         3. Build an implementation summary from prior artifacts.
         4. Generate actual implementation files using the LLM.
-        5. Write files into the run workspace.
+        5. Write files into the run workspace and copy them to the worktree root.
         6. Write the summary to ``outputs/05-implementation-summary.md``.
         7. Commit and push the milestone to the run branch.
         """
         logs: list = []
         outputs: list[str] = []
-        paths_to_commit: list[str] = []
 
-        # 1. Isolate this run's work on its own branch.
-        branch_name = git_ops.create_run_branch(context.run_id)
-        logs.append(self.log(f"Created execution branch {branch_name}"))
+        # 1. Create an isolated orphan branch via a git worktree.
+        worktree_path = git_ops.create_run_worktree(context.run_id)
+        branch_name = git_ops.run_branch_name(context.run_id)
+        logs.append(self.log(f"Created isolated worktree {worktree_path} on {branch_name}"))
 
         # 2. Isolate this run's files in their own workspace directory.
         workspace_path = prepare_workspace(context.run_id)
@@ -56,6 +61,8 @@ class ExecutionAgent(BaseAgent):
         idea = context.artifacts.get("idea-generation", context.idea) or context.idea
         execution_plan = context.artifacts.get("execution-plan", "")
         architecture = context.artifacts.get("architecture", "")
+        test_report = context.artifacts.get("test", "")
+        qa_report = context.artifacts.get("qa", "")
 
         # 4. Generate code/config/test files from the plan and architecture.
         generated_files = self._generate_code_files(
@@ -63,14 +70,15 @@ class ExecutionAgent(BaseAgent):
             idea=idea,
             execution_plan=execution_plan,
             architecture=architecture,
+            test_report=test_report,
+            qa_report=qa_report,
         )
         for relative_path, content in generated_files.items():
-            file_path = write_workspace_file(context.run_id, relative_path, content)
-            paths_to_commit.append(str(file_path))
+            write_workspace_file(context.run_id, relative_path, content)
             logs.append(self.log(f"Wrote workspace file {relative_path}"))
 
         # Also write the workspace README for human orientation.
-        workspace_readme = write_workspace_file(
+        write_workspace_file(
             context.run_id,
             "README.md",
             self._build_workspace_readme(
@@ -79,29 +87,34 @@ class ExecutionAgent(BaseAgent):
                 execution_plan=execution_plan,
             ),
         )
-        paths_to_commit.append(str(workspace_path))
-        logs.append(self.log(f"Wrote workspace README to {workspace_readme}"))
 
-        # 5. Produce the implementation summary artifact.
-        workspace_files = list_workspace_files(context.run_id)
+        # 5. Copy generated workspace files to the worktree root so the branch
+        # contains only the startup code, not the parent project.
+        copy_workspace_to_worktree(context.run_id, worktree_path)
+        logs.append(self.log(f"Copied workspace files to worktree root {worktree_path}"))
+
+        # 6. Produce the implementation summary artifact.
+        worktree_files = list_worktree_files(worktree_path)
         summary = self._build_summary(
             run_id=context.run_id,
             branch=branch_name,
             workspace=str(workspace_path),
+            worktree=str(worktree_path),
             idea=idea,
             execution_plan=execution_plan,
             architecture=architecture,
-            files=workspace_files,
+            files=worktree_files,
         )
         artifact_path = self.artifact_manager.write("execution", summary)
         outputs.append(artifact_path)
-        paths_to_commit.append(artifact_path)
         logs.append(self.log(f"Wrote implementation summary to {artifact_path}"))
 
-        # 6. Commit and push the milestone without human confirmation.
+        # 7. Commit and push the milestone from the worktree.
+        paths_to_commit = [str(worktree_path)]
         commit_result = git_ops.commit_milestone(
             run_id=context.run_id,
             message=f"feat: milestone implementation for {context.run_id}",
+            repo_path=str(worktree_path),
             paths=paths_to_commit,
         )
         logs.append(
@@ -110,6 +123,11 @@ class ExecutionAgent(BaseAgent):
                 f"remote={commit_result.remote_url}"
             )
         )
+
+        # Remove the worktree so the branch can be checked out elsewhere,
+        # but keep the branch and the workspace/ copy for inspection.
+        git_ops.remove_worktree_only(context.run_id)
+        logs.append(self.log(f"Removed worktree for {context.run_id}"))
 
         return AgentResult(
             status="completed",
@@ -125,6 +143,8 @@ class ExecutionAgent(BaseAgent):
         idea: str,
         execution_plan: str,
         architecture: str,
+        test_report: str,
+        qa_report: str,
     ) -> dict[str, str]:
         """Ask the LLM to produce implementation files and return a path->content map."""
         system_prompt = (
@@ -140,6 +160,29 @@ class ExecutionAgent(BaseAgent):
             "Use the same format for every file. Paths must be relative to the project root. "
             "Include at least one source file and one test file when possible."
         )
+
+        rework_section = ""
+        if qa_report:
+            rework_section = f"""
+## Previous QA Feedback
+
+{qa_report}
+
+You are running a rework iteration. Address the issues above explicitly. Be
+conservative: preserve the existing implementation and tests as much as possible
+and only change files necessary to fix the reported defects. Do not add new
+files or expand scope unless the rework instructions require it. In your
+implementation summary, list what changed compared to the previous iteration.
+"""
+        if test_report:
+            rework_section += f"""
+## Previous Test Report
+
+{test_report}
+
+Fix any reported bugs or gaps where feasible.
+"""
+
         user_prompt = f"""Run ID: {run_id}
 
 ## Approved Idea
@@ -153,30 +196,68 @@ class ExecutionAgent(BaseAgent):
 ## Architecture
 
 {architecture or "_No architecture design provided._"}
-
+{rework_section}
 Generate the implementation files now.
 """
-        fallback = self._fallback_code_files(run_id, idea)
+        fallback = self._fallback_code_files(run_id, idea, bool(qa_report))
         response = call_llm("execution", system_prompt, user_prompt, fallback)
         return self._parse_code_files(response)
 
     def _parse_code_files(self, text: str) -> dict[str, str]:
-        """Parse FILE:/fenced-block output from the LLM into a path->content map."""
+        """Parse FILE:/fenced-block output from the LLM into a path->content map.
+
+        The expected format for each file is:
+
+            FILE: relative/path/to/file.ext
+            ```ext
+            # file content
+            ```
+
+        This parser is line-based so it handles empty files, files whose content
+        contains triple backticks, and multiple files in a single response.
+        """
         files: dict[str, str] = {}
-        # Match a FILE: line followed by a fenced code block.
-        pattern = re.compile(
-            r"^FILE:\s*(.+?)\s*\n```(?:\w+)?\s*\n(.*?)\n```",
-            re.MULTILINE | re.DOTALL,
-        )
-        for match in pattern.finditer(text):
-            path = match.group(1).strip().lstrip("/")
-            content = match.group(2)
-            if path:
-                files[path] = content
+        current_path: str | None = None
+        current_lines: list[str] = []
+        in_fence = False
+
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("FILE:"):
+                if current_path is not None:
+                    files[current_path] = "\n".join(current_lines).rstrip("\n")
+                current_path = stripped[len("FILE:"):].strip().lstrip("/")
+                current_lines = []
+                in_fence = False
+                continue
+
+            if current_path is None:
+                continue
+
+            fence_match = re.match(r"^```(?:\w+)?\s*$", stripped)
+            if fence_match and not in_fence:
+                in_fence = True
+                continue
+
+            if stripped == "```" and in_fence:
+                files[current_path] = "\n".join(current_lines).rstrip("\n")
+                current_path = None
+                current_lines = []
+                in_fence = False
+                continue
+
+            if in_fence:
+                current_lines.append(line)
+
+        # If the response ends while still collecting a file, flush it.
+        if current_path is not None:
+            files[current_path] = "\n".join(current_lines).rstrip("\n")
+
         return files
 
-    def _fallback_code_files(self, run_id: str, idea: str) -> str:
+    def _fallback_code_files(self, run_id: str, idea: str, is_rework: bool) -> str:
         """Minimal deterministic fallback if the LLM is unavailable."""
+        rework_note = "This is a rework iteration." if is_rework else ""
         return f"""FILE: README.md
 ```markdown
 # Run Workspace: {run_id}
@@ -186,6 +267,7 @@ Generate the implementation files now.
 ## Notes
 
 This README was generated as a fallback because the LLM was unavailable.
+{rework_note}
 ```
 
 FILE: src/main.py
@@ -215,6 +297,7 @@ def test_main_runs() -> None:
         run_id: str,
         branch: str,
         workspace: str,
+        worktree: str,
         idea: str,
         execution_plan: str,
         architecture: str,
@@ -225,7 +308,8 @@ def test_main_runs() -> None:
 
 **Run:** {run_id}  
 **Branch:** {branch}  
-**Workspace:** `{workspace}`
+**Workspace:** `{workspace}`  
+**Isolated Worktree:** `{worktree}`
 
 ## What Was Built
 
@@ -248,7 +332,8 @@ were targeted:
 
 1. Check out the run branch: `git checkout {branch}`
 2. Inspect the workspace: `cd {workspace}`
-3. Install dependencies and run tests.
+3. Or inspect the isolated worktree: `cd {worktree}`
+4. Install dependencies and run tests.
 
 ## Tests Included
 
@@ -262,7 +347,7 @@ were targeted:
 ## Known Limitations
 
 - This is an autonomous execution milestone. Review generated files under
-  `{workspace}` before merging to `main`.
+  `{worktree}` before merging to `main`.
 """
 
     def _build_workspace_readme(

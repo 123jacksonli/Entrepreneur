@@ -4,10 +4,12 @@ import asyncio
 import logging
 import subprocess
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from src.agents._utils import call_llm
 from src.agents.base import BaseAgent, AgentContext, AgentResult
 from src.artifacts import ArtifactManager
+from src.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -22,9 +24,9 @@ class TestAgent(BaseAgent):
     async def run(self, context: AgentContext) -> AgentResult:
         logs: list = []
 
-        # Run the backend test suite in a thread-safe way.
-        test_output = await asyncio.to_thread(self._run_pytest)
-        logs.append(self.log("Ran backend test suite"))
+        # Run tests against the generated project in the run workspace.
+        test_output = await asyncio.to_thread(self._run_project_tests, context.run_id)
+        logs.append(self.log("Ran generated project test suite"))
 
         implementation_summary = context.artifacts.get("execution", "")
         architecture = context.artifacts.get("architecture", "")
@@ -56,7 +58,7 @@ Write a test report."""
         fallback = f"""# Test Report
 
 ## Test Strategy
-Ran the existing automated test suite to verify core backend and agent tooling behavior.
+Ran the generated project's automated test suite (if present) to verify core behavior.
 
 ## Test Results
 ```
@@ -70,7 +72,7 @@ Coverage was not measured in this automated pass.
 None reported by the test runner.
 
 ## Flaky or Skipped Tests
-- Some tests depend on external web search and may fail due to network issues.
+- Some tests may depend on external services and can fail due to network issues.
 
 ## Recommendation
 Proceed to QA review if the test runner reports no failures.
@@ -87,20 +89,63 @@ Proceed to QA review if the test runner reports no failures.
             artifact_text=content,
         )
 
-    def _run_pytest(self) -> str:
-        """Run pytest and return stdout/stderr combined."""
+    def _install_project_dependencies(self, workspace: Path) -> str:
+        """Install dependencies declared by the generated project."""
+        workspace = workspace.resolve()
+        req_file = workspace / "requirements.txt"
+        pyproject = workspace / "pyproject.toml"
+        setup_py = workspace / "setup.py"
+
+        if req_file.exists():
+            cmd = ["python", "-m", "pip", "install", "-r", str(req_file)]
+        elif pyproject.exists() or setup_py.exists():
+            cmd = ["python", "-m", "pip", "install", "-e", "."]
+        else:
+            return "No dependency manifest found; skipping install."
+
         try:
             result = subprocess.run(
-                ["python", "-m", "pytest", "tests/", "-q"],
+                cmd,
+                cwd=str(workspace),
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            output = result.stdout + "\n" + result.stderr
+            return output.strip()
+        except subprocess.TimeoutExpired:
+            return "Dependency installation timed out."
+        except Exception as exc:  # noqa: BLE001
+            return f"Error installing dependencies: {exc}"
+
+    def _run_project_tests(self, run_id: str) -> str:
+        """Run tests inside the generated project workspace for a run."""
+        workspace = Path(Config.WORKSPACE_DIR) / run_id
+        workspace = workspace.resolve()
+        if not workspace.exists():
+            return f"Workspace {workspace} does not exist; no tests to run."
+
+        install_log = self._install_project_dependencies(workspace)
+
+        test_dirs = [workspace / "tests", workspace / "test"]
+        test_dir = next((d for d in test_dirs if d.exists() and d.is_dir()), None)
+
+        if test_dir is None:
+            return f"No tests/ or test/ directory found in the generated project.\n\nDependency install log:\n{install_log}"
+
+        try:
+            result = subprocess.run(
+                ["python", "-m", "pytest", str(test_dir), "-q"],
+                cwd=str(workspace),
                 capture_output=True,
                 text=True,
                 timeout=300,
             )
             output = result.stdout + "\n" + result.stderr
-            return output.strip()
+            return f"Dependency install log:\n{install_log}\n\nTest output:\n{output.strip()}"
         except subprocess.TimeoutExpired:
-            return "Test suite timed out."
+            return f"Dependency install log:\n{install_log}\n\nTest suite timed out."
         except FileNotFoundError:
-            return "pytest not available."
+            return f"Dependency install log:\n{install_log}\n\npytest not available."
         except Exception as exc:  # noqa: BLE001
-            return f"Error running tests: {exc}"
+            return f"Dependency install log:\n{install_log}\n\nError running tests: {exc}"
