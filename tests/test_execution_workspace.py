@@ -6,7 +6,7 @@ import pytest
 
 from src.agents.execution import ExecutionAgent
 from src.config import Config
-from src.execution_workspace import _is_excluded, copy_workspace_to_worktree
+from src.execution_workspace import _is_excluded, list_workspace_files
 
 
 class TestParseCodeFiles:
@@ -78,8 +78,8 @@ class TestIsExcluded:
         assert _is_excluded(path) is expected
 
 
-class TestCopyWorkspaceToWorktree:
-    def test_copy_excludes_build_artifacts(self, tmp_path, monkeypatch):
+class TestListWorkspaceFiles:
+    def test_lists_files_and_excludes_artifacts(self, tmp_path, monkeypatch):
         monkeypatch.setattr(Config, "WORKSPACE_DIR", str(tmp_path / "workspace"))
         workspace = tmp_path / "workspace" / "run-1"
         workspace.mkdir(parents=True)
@@ -87,14 +87,6 @@ class TestCopyWorkspaceToWorktree:
         (workspace / "src" / "main.py").write_text("x = 1")
         (workspace / "__pycache__" / "main.cpython-314.pyc").parent.mkdir(parents=True)
         (workspace / "__pycache__" / "main.cpython-314.pyc").write_text("cache")
-        (workspace / "foo.egg-info" / "PKG-INFO").parent.mkdir(parents=True)
-        (workspace / "foo.egg-info" / "PKG-INFO").write_text("metadata")
 
-        worktree = tmp_path / "worktree"
-        worktree.mkdir()
-
-        copy_workspace_to_worktree("run-1", worktree)
-
-        assert (worktree / "src" / "main.py").exists()
-        assert not (worktree / "__pycache__").exists()
-        assert not (worktree / "foo.egg-info").exists()
+        files = list_workspace_files("run-1")
+        assert files == ["src/main.py"]

@@ -36,9 +36,8 @@ class Orchestrator:
         self.config = config or Config()
         self.artifacts = artifact_manager or ArtifactManager()
 
-        # Per-run locks allow concurrent pipelines for different run IDs.
-        # Note: Execution Agent git branch switches still share the working
-        # directory, so git-heavy stages remain effectively serialized.
+        # Per-run locks allow concurrent pipelines for different run IDs while
+        # keeping a single run's stages sequential.
         self._run_locks: dict[str, asyncio.Lock] = {}
         self._stop_flags: set[str] = set()
         self._subscribers: dict[str, list[asyncio.Queue[PipelineEvent]]] = {}

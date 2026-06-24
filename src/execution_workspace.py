@@ -2,18 +2,13 @@
 
 Each run gets its own directory under ``workspace/{run_id}/`` so that multiple
 runs or iterations can be developed and tested without overwriting each other.
-The workspace is committed to the run branch along with the implementation
-summary.
-
-For startup-only branches, files are also written to a git worktree root so the
-run branch contains only the generated startup code.
 """
 
 from pathlib import Path
 
 from src.config import Config
 
-# Patterns that should never be copied from the workspace to the run branch.
+# Patterns that should never be treated as generated implementation files.
 _EXCLUDED_PARTS = {
     ".pytest_cache",
     "__pycache__",
@@ -74,42 +69,3 @@ def list_workspace_files(run_id: str) -> list[str]:
         if path.is_file() and not _is_excluded(path):
             files.append(str(path.relative_to(workspace)))
     return sorted(files)
-
-
-def write_worktree_file(worktree_path: Path, relative_path: str, content: str) -> Path:
-    """Write ``content`` to a file inside a git worktree root."""
-    file_path = worktree_path / relative_path
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    file_path.write_text(content, encoding="utf-8")
-    return file_path
-
-
-def list_worktree_files(worktree_path: Path) -> list[str]:
-    """Return all file paths inside a worktree root, relative to the root."""
-    files: list[str] = []
-    if not worktree_path.exists():
-        return files
-    for path in worktree_path.rglob("*"):
-        if path.is_file() and not _is_excluded(path):
-            files.append(str(path.relative_to(worktree_path)))
-    return sorted(files)
-
-
-def copy_workspace_to_worktree(run_id: str, worktree_path: Path) -> None:
-    """Copy implementation files from the run workspace into the worktree root.
-
-    Build artifacts, caches, and VCS metadata are excluded so the run branch
-    contains only the generated startup code.
-    """
-    workspace = prepare_workspace(run_id)
-    if not workspace.exists():
-        return
-    for src in workspace.rglob("*"):
-        if src.is_file() and not _is_excluded(src):
-            dst = worktree_path / src.relative_to(workspace)
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(str(src), str(dst))
-
-
-# Import shutil here to avoid importing at module top while still being available.
-import shutil  # noqa: E402

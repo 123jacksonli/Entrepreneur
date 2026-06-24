@@ -23,10 +23,6 @@ class Config:
     STOP_ON_HIGH_COST = os.getenv("STOP_ON_HIGH_COST", "false").lower() == "true"
     MAX_ESTIMATED_COST_USD = float(os.getenv("MAX_ESTIMATED_COST_USD", "0")) or None
 
-    # Execution Agent version control
-    EXEC_BRANCH_PREFIX = os.getenv("EXEC_BRANCH_PREFIX", "exec")
-    GITHUB_REPO = os.getenv("GITHUB_REPO")  # owner/repo format, e.g. "123jacksonli/Entrepreneur"
-
     # Run isolation
     WORKSPACE_DIR = os.getenv("WORKSPACE_DIR", "workspace")
 

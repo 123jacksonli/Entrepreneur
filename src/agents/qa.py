@@ -48,15 +48,21 @@ evidence for each. Then render the final QA report and verdict."""
             "   - Issues Found\n"
             "   - Verdict (include the line 'Verdict: accept|conditional accept|reject')\n"
             "   - Rework Instructions (if rejecting)\n\n"
+            "Hard acceptance rules:\n"
+            "- The project MUST have a dependency manifest (package.json or pyproject.toml/"
+            "requirements.txt/setup.py) AND a README with setup/usage instructions.\n"
+            "- The test suite MUST run and at least one test MUST be discovered.\n"
+            "- All discovered tests MUST pass (exit code 0).\n"
+            "- If any of the above is not true, verdict MUST be reject with concrete "
+            "rework instructions to fix the specific gap.\n\n"
             "Guidance:\n"
-            "- Approve (or conditional-accept) if the test suite passes and the "
-            "implementation satisfies the execution plan and architecture.\n"
-            "- Do not reject solely because you would like more tests, more documentation, "
-            "real-world validation data, or cosmetic polish unless the execution plan "
-            "explicitly requires it.\n"
-            "- Reject only when there is a concrete, fixable defect: failing tests, "
-            "missing required functionality, broken CLI contract, or security/correctness "
-            "bugs that the Execution Agent can actually address.\n"
+            "- Approve (or conditional-accept) when the hard rules are satisfied, the "
+            "core functionality works, and the implementation meets the execution plan.\n"
+            "- Do not reject solely because you would like more tests of a specific type, "
+            "more documentation, real-world validation data, or cosmetic polish.\n"
+            "- Reject when there is a concrete, fixable defect: failing tests, missing "
+            "required functionality, broken CLI contract, or security/correctness bugs "
+            "that the Execution Agent can actually address.\n"
             "- Rework instructions must be specific, minimal, and actionable."
         )
 
@@ -76,7 +82,7 @@ The pipeline produced all expected artifacts for the approved idea.
 Core workflow stages are represented.
 
 ## Code Quality
-Code was committed to a dedicated run branch and workspace folder.
+Code was written to a dedicated workspace folder for the run.
 
 ## Test Quality
 Test suite was executed and results recorded.

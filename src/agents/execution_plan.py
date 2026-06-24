@@ -39,6 +39,12 @@ Write an execution plan for the approved idea."""
             "5. Resource Requirements\n"
             "6. Definition of Done\n"
             "7. Open Questions\n\n"
+            "Planning constraints:\n"
+            "- Scope the MVP to the smallest runnable, testable unit. Avoid milestones that "
+            "require external services (databases, cloud infra, auth providers, paid APIs).\n"
+            "- Prefer CLI tools, small libraries, static sites, or single-file web apps.\n"
+            "- The Definition of Done must include: dependency manifest, README, passing tests, "
+            "and a one-command run/demo path.\n\n"
             "Do not write code or architecture."
         )
 
@@ -72,7 +78,7 @@ Build a minimal viable product that validates the core idea quickly.
 - LLM API key
 
 ## Definition of Done
-Each milestone has passing tests and a committed, pushed run branch.
+Each milestone has passing tests and implementation files written to the run workspace.
 
 ## Open Questions
 - Exact UI/UX details for the first milestone.

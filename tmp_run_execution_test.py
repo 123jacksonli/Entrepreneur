@@ -1,12 +1,10 @@
 """Focused test: run Execution Agent on a simple idea and iterate on QA feedback
 until the generated code is accepted or max iterations are reached.
 
-The branch produced should be an orphan branch containing only the generated
-startup code, relevant to the idea.
+The Execution Agent now writes all files to workspace/{run_id}/ only.
 """
 
 import asyncio
-import os
 import shutil
 import sys
 import traceback
@@ -19,10 +17,8 @@ from src.agents.test import TestAgent
 from src.artifacts import ArtifactManager
 from src.config import Config
 from src.llm_factory import create_completion
-from src.tools import git_ops
 
 RUN_ID = "exec-test-run"
-WORKTREE_PATH: Path | None = None
 
 
 def _extract_verdict(text: str) -> str | None:
@@ -32,8 +28,7 @@ def _extract_verdict(text: str) -> str | None:
     return m.group(1).lower() if m else None
 
 
-_orig_create_completion = create_completion
-
+_orig_create_completion = create_completion434
 
 def _timed_create_completion(agent_id, system_prompt, user_prompt, **kwargs):
     kwargs.setdefault("timeout", 300)
@@ -47,28 +42,10 @@ src.agents._utils.create_completion = _timed_create_completion
 src.llm_factory.create_completion = _timed_create_completion
 
 
-# Demo safety: commit locally but do not push.
-_orig_push_run_branch = git_ops.push_run_branch
-
-
-def _no_push_run_branch(run_id, repo_path=None):
-    print(f"[DEMO] Skipping remote push for {run_id}")
-    return ""
-
-
-git_ops.push_run_branch = _no_push_run_branch
-
-
 async def main() -> None:
-    global WORKTREE_PATH
-
     Config.OUTPUTS_DIR = "outputs/exec-test"
     am = ArtifactManager(outputs_dir=Config.OUTPUTS_DIR, run_id=RUN_ID)
 
-    # Clean up any previous run.
-    prev_worktree = git_ops.run_worktree_path(RUN_ID)
-    if prev_worktree.exists():
-        shutil.rmtree(prev_worktree, ignore_errors=True)
     prev_workspace = Path(Config.WORKSPACE_DIR) / RUN_ID
     if prev_workspace.exists():
         shutil.rmtree(prev_workspace, ignore_errors=True)
@@ -123,14 +100,16 @@ Build a minimal, working Python CLI that converts a Markdown file to a styled HT
         exec_agent = ExecutionAgent(artifact_manager=am)
         exec_result = await exec_agent.run(ctx)
         ctx.artifacts["execution"] = exec_result.artifact_text
-        branch_name = git_ops.run_branch_name(RUN_ID)
-        print(f"Branch: {branch_name}")
 
-        # Inspect generated files on the run branch (worktree is already removed).
-        files = git_ops._run_git(
-            ["ls-tree", "-r", branch_name, "--name-only"], cwd=str(Path.cwd())
-        ).stdout.strip()
-        print("Files on branch:\n", files)
+        # Inspect generated files in the workspace.
+        workspace = Path(Config.WORKSPACE_DIR) / RUN_ID
+        files = sorted(
+            str(p.relative_to(workspace))
+            for p in workspace.rglob("*")
+            if p.is_file()
+        )
+        print(f"Workspace: {workspace}")
+        print("Files in workspace:\n", "\n".join(files))
 
         print("\n>>> Running Test Agent...")
         test_agent = TestAgent(artifact_manager=am)
@@ -156,7 +135,6 @@ Build a minimal, working Python CLI that converts a Markdown file to a styled HT
         print("\n[EXHAUSTED] Max iterations reached without QA acceptance.")
 
     print(f"\n{'=' * 78}")
-    print(f"Final branch: {git_ops.run_branch_name(RUN_ID)}")
     print(f"Workspace: workspace/{RUN_ID}/")
     print(f"Artifacts: {Config.OUTPUTS_DIR}/{RUN_ID}/")
     print("=" * 78)

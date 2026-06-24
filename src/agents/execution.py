@@ -1,28 +1,22 @@
-"""Execution Agent: turns the approved plan into code and commits it.
+"""Execution Agent: turns the approved plan into code.
 
 The Execution Agent is the only agent allowed to modify implementation files.
-It creates a dedicated branch for every pipeline run **and** a dedicated
-workspace folder so multiple runs can be developed and tested in isolation.
-
-Each run branch is an orphan branch containing only the generated startup code;
-the parent Entrepreneur project is not included.
+It writes all generated code, config, tests, and docs into a dedicated
+workspace folder under ``workspace/{run_id}/`` so multiple runs can be
+developed and tested in isolation.
 """
 
 import logging
-import re
 from dataclasses import dataclass, field
 
 from src.agents._utils import call_llm
 from src.agents.base import BaseAgent, AgentContext, AgentResult
 from src.artifacts import ArtifactManager
 from src.execution_workspace import (
-    copy_workspace_to_worktree,
-    list_worktree_files,
     list_workspace_files,
     prepare_workspace,
     write_workspace_file,
 )
-from src.tools import git_ops
 
 logger = logging.getLogger(__name__)
 
@@ -37,34 +31,27 @@ class ExecutionAgent(BaseAgent):
         """Execute the implementation phase for a run.
 
         Steps:
-        1. Create a dedicated orphan branch for the run via a git worktree.
-        2. Create a dedicated workspace folder for the run.
-        3. Build an implementation summary from prior artifacts.
-        4. Generate actual implementation files using the LLM.
-        5. Write files into the run workspace and copy them to the worktree root.
-        6. Write the summary to ``outputs/05-implementation-summary.md``.
-        7. Commit and push the milestone to the run branch.
+        1. Create a dedicated workspace folder for the run.
+        2. Build an implementation summary from prior artifacts.
+        3. Generate actual implementation files using the LLM.
+        4. Write files into the run workspace.
+        5. Write the summary to ``outputs/05-implementation-summary.md``.
         """
         logs: list = []
         outputs: list[str] = []
 
-        # 1. Create an isolated orphan branch via a git worktree.
-        worktree_path = git_ops.create_run_worktree(context.run_id)
-        branch_name = git_ops.run_branch_name(context.run_id)
-        logs.append(self.log(f"Created isolated worktree {worktree_path} on {branch_name}"))
-
-        # 2. Isolate this run's files in their own workspace directory.
+        # 1. Isolate this run's files in their own workspace directory.
         workspace_path = prepare_workspace(context.run_id)
         logs.append(self.log(f"Prepared workspace {workspace_path}"))
 
-        # 3. Gather prior artifacts.
+        # 2. Gather prior artifacts.
         idea = context.artifacts.get("idea-generation", context.idea) or context.idea
         execution_plan = context.artifacts.get("execution-plan", "")
         architecture = context.artifacts.get("architecture", "")
         test_report = context.artifacts.get("test", "")
         qa_report = context.artifacts.get("qa", "")
 
-        # 4. Generate code/config/test files from the plan and architecture.
+        # 3. Generate code/config/test files from the plan and architecture.
         generated_files = self._generate_code_files(
             run_id=context.run_id,
             idea=idea,
@@ -88,46 +75,19 @@ class ExecutionAgent(BaseAgent):
             ),
         )
 
-        # 5. Copy generated workspace files to the worktree root so the branch
-        # contains only the startup code, not the parent project.
-        copy_workspace_to_worktree(context.run_id, worktree_path)
-        logs.append(self.log(f"Copied workspace files to worktree root {worktree_path}"))
-
-        # 6. Produce the implementation summary artifact.
-        worktree_files = list_worktree_files(worktree_path)
+        # 4. Produce the implementation summary artifact.
+        workspace_files = list_workspace_files(context.run_id)
         summary = self._build_summary(
             run_id=context.run_id,
-            branch=branch_name,
             workspace=str(workspace_path),
-            worktree=str(worktree_path),
             idea=idea,
             execution_plan=execution_plan,
             architecture=architecture,
-            files=worktree_files,
+            files=workspace_files,
         )
         artifact_path = self.artifact_manager.write("execution", summary)
         outputs.append(artifact_path)
         logs.append(self.log(f"Wrote implementation summary to {artifact_path}"))
-
-        # 7. Commit and push the milestone from the worktree.
-        paths_to_commit = [str(worktree_path)]
-        commit_result = git_ops.commit_milestone(
-            run_id=context.run_id,
-            message=f"feat: milestone implementation for {context.run_id}",
-            repo_path=str(worktree_path),
-            paths=paths_to_commit,
-        )
-        logs.append(
-            self.log(
-                f"Committed {commit_result.commit_hash[:8]} to {commit_result.branch}; "
-                f"remote={commit_result.remote_url}"
-            )
-        )
-
-        # Remove the worktree so the branch can be checked out elsewhere,
-        # but keep the branch and the workspace/ copy for inspection.
-        git_ops.remove_worktree_only(context.run_id)
-        logs.append(self.log(f"Removed worktree for {context.run_id}"))
 
         return AgentResult(
             status="completed",
@@ -158,7 +118,16 @@ class ExecutionAgent(BaseAgent):
             "# file content\n"
             "```\n\n"
             "Use the same format for every file. Paths must be relative to the project root. "
-            "Include at least one source file and one test file when possible."
+            "Include at least one source file and one test file when possible.\n\n"
+            "Critical requirements:\n"
+            "- Always include a dependency manifest (package.json for Node.js, pyproject.toml "
+            "or requirements.txt for Python).\n"
+            "- Always include a README.md with install and run instructions.\n"
+            "- For Node.js, include a 'test' script in package.json that runs the tests.\n"
+            "- For Python, place tests under tests/ and use pytest.\n"
+            "- Keep the MVP self-contained: avoid external services (databases, APIs, cloud "
+            "infra) unless the architecture explicitly requires them. Prefer in-memory or "
+            "file-based implementations for the MVP."
         )
 
         rework_section = ""
@@ -216,6 +185,8 @@ Generate the implementation files now.
         This parser is line-based so it handles empty files, files whose content
         contains triple backticks, and multiple files in a single response.
         """
+        import re
+
         files: dict[str, str] = {}
         current_path: str | None = None
         current_lines: list[str] = []
@@ -295,9 +266,7 @@ def test_main_runs() -> None:
         self,
         *,
         run_id: str,
-        branch: str,
         workspace: str,
-        worktree: str,
         idea: str,
         execution_plan: str,
         architecture: str,
@@ -307,9 +276,7 @@ def test_main_runs() -> None:
         return f"""# Implementation Summary
 
 **Run:** {run_id}  
-**Branch:** {branch}  
-**Workspace:** `{workspace}`  
-**Isolated Worktree:** `{worktree}`
+**Workspace:** `{workspace}`
 
 ## What Was Built
 
@@ -330,10 +297,8 @@ were targeted:
 
 ## How to Run
 
-1. Check out the run branch: `git checkout {branch}`
-2. Inspect the workspace: `cd {workspace}`
-3. Or inspect the isolated worktree: `cd {worktree}`
-4. Install dependencies and run tests.
+1. Inspect the workspace: `cd {workspace}`
+2. Install dependencies and run tests.
 
 ## Tests Included
 
@@ -347,7 +312,7 @@ were targeted:
 ## Known Limitations
 
 - This is an autonomous execution milestone. Review generated files under
-  `{worktree}` before merging to `main`.
+  `{workspace}` before using them in production.
 """
 
     def _build_workspace_readme(

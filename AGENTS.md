@@ -72,7 +72,8 @@ Entrepreneur/
 5. **Hand-off contract.** Each agent must write its output to a clearly named artifact and signal completion to the orchestrator.
 6. **Idea loop.** Idea Generation → Research → Plan form a loop. The Plan Agent approves, iterates, or stops. Only approved ideas proceed to Execution Plan. The orchestrator enforces `MAX_IDEA_ITERATIONS`.
 7. **QA loop.** If QA rejects the output, the orchestrator routes rework instructions back to the Execution Agent automatically, up to `MAX_QA_ITERATIONS`.
-8. **Execution Agent uses GitHub MCP.** The Execution Agent must create a dedicated branch per run, write implementation code into a dedicated workspace folder (`workspace/{run_id}/`) to avoid overlap, commit after each milestone to that branch, and push changes so all execution output is version-controlled. Execution never commits directly to `main`.\n9. **Artifacts are isolated per run.** Each run writes its markdown artifacts to `outputs/{run_id}/` so approved and disapproved ideas can be reviewed later.
+8. **Execution Agent writes to a dedicated workspace folder.** The Execution Agent writes implementation code into `workspace/{run_id}/` to avoid overlap with other runs. It does not create git branches or commit code; version control is left to the operator.
+9. **Artifacts are isolated per run.** Each run writes its markdown artifacts to `outputs/{run_id}/` so approved and disapproved ideas can be reviewed later.
 10. **Support agents.** Optional agents (Supabase Design, Social Media Manager) can be invoked after the core pipeline to produce database designs and launch content.
 
 ## 5. Artifact Naming Convention

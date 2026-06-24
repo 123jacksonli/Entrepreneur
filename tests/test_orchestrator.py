@@ -117,7 +117,7 @@ async def test_orchestrator_runs_full_pipeline(tmp_path, monkeypatch):
     ]:
         assert (outputs_dir / stage).exists(), f"missing {stage}"
 
-    # The execution branch was created in a worktree; main repo stays on main.
+    # The Execution Agent writes to a workspace folder; main repo stays on main.
     current_branch = _run_shell("git rev-parse --abbrev-ref HEAD", cwd=str(repo))
     assert current_branch == "main"
     assert (workspace_dir / "run-orch" / "README.md").exists()
