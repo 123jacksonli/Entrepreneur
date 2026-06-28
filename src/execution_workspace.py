@@ -22,6 +22,9 @@ _EXCLUDED_PARTS = {
     ".mypy_cache",
     ".ruff_cache",
     ".git",
+    ".venv",
+    "venv",
+    "node_modules",
 }
 
 

@@ -153,7 +153,11 @@ class Orchestrator:
                 return
 
             qa_iterations += 1
-            await self._run_agent(run_id, "execution", idea)
+            execution_result = await self._run_agent(run_id, "execution", idea)
+            if execution_result.status == "failed":
+                await self._finish_run(run_id, "failed", "execution")
+                return
+
             await self._run_agent(run_id, "test", idea)
             qa_result = await self._run_agent(run_id, "qa", idea)
             qa_verdict = qa_result.metadata.get("verdict", "accept")

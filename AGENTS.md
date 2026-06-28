@@ -30,7 +30,7 @@ This repository builds an **agent-driven startup builder** for entrepreneurs. A 
 └──────┬──────┘
        ▼
 ┌─────────────┐
-│  Execution  │  ──► Write code, config, tests, docs
+│  Execution  │  ──► Write, build, test, and fix code
 └──────┬──────┘
        ▼
 ┌─────────────┐
@@ -72,7 +72,7 @@ Entrepreneur/
 5. **Hand-off contract.** Each agent must write its output to a clearly named artifact and signal completion to the orchestrator.
 6. **Idea loop.** Idea Generation → Research → Plan form a loop. The Plan Agent approves, iterates, or stops. Only approved ideas proceed to Execution Plan. The orchestrator enforces `MAX_IDEA_ITERATIONS`.
 7. **QA loop.** If QA rejects the output, the orchestrator routes rework instructions back to the Execution Agent automatically, up to `MAX_QA_ITERATIONS`.
-8. **Execution Agent writes to a dedicated workspace folder.** The Execution Agent writes implementation code into `workspace/{run_id}/` to avoid overlap with other runs. It does not create git branches or commit code; version control is left to the operator.
+8. **Execution Agent writes to a dedicated workspace folder and validates its output.** The Execution Agent writes implementation code into `workspace/{run_id}/` to avoid overlap with other runs. It installs dependencies, runs tests, and performs optional type-checks/lints in an isolated workspace environment. If validation fails, it regenerates a fix up to `MAX_EXECUTION_FIX_ITERATIONS`. It also writes production-hygiene files (`.gitignore`, CI workflow, `.env.example`, pre-commit config). It does not create git branches or commit code; version control is left to the operator.
 9. **Artifacts are isolated per run.** Each run writes its markdown artifacts to `outputs/{run_id}/` so approved and disapproved ideas can be reviewed later.
 10. **Support agents.** Optional agents (Supabase Design, Social Media Manager) can be invoked after the core pipeline to produce database designs and launch content.
 
@@ -97,6 +97,7 @@ To prevent runaway execution and costs:
 
 - `MAX_IDEA_ITERATIONS` — maximum times the Idea Generation → Research → Plan loop can run (default: 3).
 - `MAX_QA_ITERATIONS` — maximum times QA can reject and trigger rework (default: 3).
+- `MAX_EXECUTION_FIX_ITERATIONS` — maximum times the Execution Agent can regenerate a fix when its own build/test validation fails (default: 3).
 - `MAX_TOKENS_PER_AGENT` — optional per-agent token budget.
 - `STOP_ON_HIGH_COST` — optional flag to pause if estimated cost exceeds a threshold.
 - All agent decisions and iteration reasons are logged to `outputs/` and the state store.

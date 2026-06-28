@@ -19,6 +19,7 @@ class Config:
     # Autonomous operation safeguards
     MAX_IDEA_ITERATIONS = int(os.getenv("MAX_IDEA_ITERATIONS", "3"))
     MAX_QA_ITERATIONS = int(os.getenv("MAX_QA_ITERATIONS", "3"))
+    MAX_EXECUTION_FIX_ITERATIONS = int(os.getenv("MAX_EXECUTION_FIX_ITERATIONS", "3"))
     MAX_TOKENS_PER_AGENT = int(os.getenv("MAX_TOKENS_PER_AGENT", "0")) or None
     STOP_ON_HIGH_COST = os.getenv("STOP_ON_HIGH_COST", "false").lower() == "true"
     MAX_ESTIMATED_COST_USD = float(os.getenv("MAX_ESTIMATED_COST_USD", "0")) or None

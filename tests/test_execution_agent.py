@@ -34,6 +34,9 @@ async def test_execution_agent_creates_workspace(tmp_path, monkeypatch):
     monkeypatch.setattr(Config, "WORKSPACE_DIR", str(workspace_root))
     monkeypatch.chdir(str(repo))
 
+    # Avoid real LLM calls and network installs.
+    monkeypatch.setattr("src.llm_factory.API_KEY", None)
+
     agent = ExecutionAgent(artifact_manager=ArtifactManager(run_id="run-exec"))
     context = AgentContext(run_id="run-exec", idea="A test startup idea")
     result = await agent.run(context)

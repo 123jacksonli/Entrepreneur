@@ -1,17 +1,16 @@
-"""Tests for execution workspace helpers."""
+"""Tests for execution workspace helpers and the file parser."""
 
 from pathlib import Path
 
 import pytest
 
-from src.agents.execution import ExecutionAgent
 from src.config import Config
+from src.execution_parser import parse_code_files
 from src.execution_workspace import _is_excluded, list_workspace_files
 
 
 class TestParseCodeFiles:
     def test_parse_single_file(self):
-        agent = ExecutionAgent()
         text = (
             "FILE: src/main.py\n"
             "```python\n"
@@ -19,11 +18,10 @@ class TestParseCodeFiles:
             "    pass\n"
             "```\n"
         )
-        files = agent._parse_code_files(text)
-        assert files == {"src/main.py": "def main():\n    pass"}
+        files = parse_code_files(text)
+        assert files.files == {"src/main.py": "def main():\n    pass"}
 
     def test_parse_empty_file(self):
-        agent = ExecutionAgent()
         text = (
             "FILE: tests/__init__.py\n"
             "```python\n"
@@ -36,13 +34,12 @@ class TestParseCodeFiles:
             "    assert True\n"
             "```\n"
         )
-        files = agent._parse_code_files(text)
-        assert "tests/__init__.py" in files
-        assert files["tests/__init__.py"] == ""
-        assert "def test_foo()" in files["tests/test_foo.py"]
+        result = parse_code_files(text)
+        assert "tests/__init__.py" in result.files
+        assert result.files["tests/__init__.py"] == ""
+        assert "def test_foo()" in result.files["tests/test_foo.py"]
 
     def test_parse_file_with_nested_backticks(self):
-        agent = ExecutionAgent()
         text = (
             "FILE: readme.md\n"
             "```markdown\n"
@@ -52,10 +49,30 @@ class TestParseCodeFiles:
             "```\n"
             "```\n"
         )
-        files = agent._parse_code_files(text)
-        assert "readme.md" in files
-        assert "```python" in files["readme.md"]
-        assert "x = 1" in files["readme.md"]
+        result = parse_code_files(text)
+        assert "readme.md" in result.files
+        assert "```python" in result.files["readme.md"]
+        assert "x = 1" in result.files["readme.md"]
+
+    def test_parse_rejects_absolute_and_traversal_paths(self):
+        text = (
+            "FILE: /etc/passwd\n"
+            "```text\n"
+            "root\n"
+            "```\n"
+            "FILE: ../../escape.py\n"
+            "```python\n"
+            "print('bad')\n"
+            "```\n"
+            "FILE: src/main.py\n"
+            "```python\n"
+            "x = 1\n"
+            "```\n"
+        )
+        result = parse_code_files(text)
+        assert result.files == {"src/main.py": "x = 1"}
+        assert any("absolute path" in w for w in result.warnings)
+        assert any("traversal" in w for w in result.warnings)
 
 
 class TestIsExcluded:
